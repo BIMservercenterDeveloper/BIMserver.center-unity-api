@@ -16,36 +16,29 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using UnityEngine;
+using BIMservercenter.Toolkit.Internal.API.Utilities;
+using BIMservercenter.Toolkit.Public.Model;
+using System.Xml;
 
-namespace BIMservercenter.Toolkit.Internal.Shaders
+namespace BIMservercenter.Toolkit.Internal.API.Request
 {
-    public static class CameraCache
+    public static class BSProjectEducationalListRequest
     {
-        private static Camera cachedCamera;
-
-        public static Camera Main
+        public static string ProjectEducationalListRequest(BSLanguage language, string sessionId)
         {
-            get
-            {
-                if (cachedCamera != null)
-                {
-                    if (cachedCamera.gameObject.activeInHierarchy)
-                        return cachedCamera;
-                }
+            XmlDocument document;
+            XmlNode serviceNode;
 
-                var mainCamera = Camera.main;
+            document = new XmlDocument();
 
-                if (mainCamera == null)
-                {   
-                    Debug.LogWarning("No main camera found. The BIMserver.center Toolkit requires at least one camera in the scene. One will be generated now.");
-                    mainCamera = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener)) { tag = "MainCamera" }.GetComponent<Camera>();
-                }
+            serviceNode = BSXml.CreateNodeElement(document, "Service");
+            BSXml.CreateElement(document, serviceNode, "Command", "API_PROJECT_LIST_EDUCATION");
+            BSXml.CreateElement(document, serviceNode, "Lang", language.GetStringValue());
+            BSXml.CreateElement(document, serviceNode, "sesion_id", sessionId);
 
-                cachedCamera = mainCamera;
+            document.AppendChild(serviceNode);
 
-                return cachedCamera;
-            }
+            return document.InnerXml;
         }
     }
 }

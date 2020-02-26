@@ -16,18 +16,29 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using System;
-using UnityEngine;
+using BIMservercenter.Toolkit.Internal.API.Utilities;
+using BIMservercenter.Toolkit.Public.Model;
+using System.Xml;
 
-namespace BIMservercenter.Toolkit.Internal.Shaders
+namespace BIMservercenter.Toolkit.Internal.API.Request
 {
-    public class CameraEventRouter : MonoBehaviour
+    public static class BSProjectEducationalWith3DListRequest
     {
-        public event Action<CameraEventRouter> OnCameraPreRender;
-
-        private void OnPreRender()
+        public static string ProjectEducationalWith3DListRequest(BSLanguage language, string sessionId)
         {
-            OnCameraPreRender?.Invoke(this);
+            XmlDocument document;
+            XmlNode serviceNode;
+
+            document = new XmlDocument();
+
+            serviceNode = BSXml.CreateNodeElement(document, "Service");
+            BSXml.CreateElement(document, serviceNode, "Command", "API_PROJECT_EDUCATION_LIST_3D");
+            BSXml.CreateElement(document, serviceNode, "Lang", language.GetStringValue());
+            BSXml.CreateElement(document, serviceNode, "sesion_id", sessionId);
+
+            document.AppendChild(serviceNode);
+
+            return document.InnerXml;
         }
     }
 }

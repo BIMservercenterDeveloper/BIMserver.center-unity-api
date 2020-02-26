@@ -47,6 +47,9 @@ namespace BIMservercenter.Toolkit.Internal.API.Response.Schema
             collaboration_request_project = null;
             course_name = null;
             img = null;
+            img_small = null;
+            img_large = null;
+            img_landscape = null;
             type_project_edit = null;
         }
 
@@ -73,6 +76,9 @@ namespace BIMservercenter.Toolkit.Internal.API.Response.Schema
         public string collaboration_request_project { get; set; }
         public string course_name { get; set; }
         public string img { get; set; }
+        public string img_small { get; set; }
+        public string img_large { get; set; }
+        public string img_landscape { get; set; }
         public List<string> type_project_edit { get; set; }
     }
 

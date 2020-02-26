@@ -1,4 +1,4 @@
-﻿/*
+/*
 BIMserver.center license
 This file is part of BIMserver.center IFC frameworks.
 Copyright (c) 2017 BIMserver.center
@@ -18,10 +18,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using BIMservercenter.Toolkit.Internal.Utilities;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
-using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine;
+using System.IO;
 
 namespace BIMservercenter.Toolkit.Public.Model
 {
@@ -30,11 +30,17 @@ namespace BIMservercenter.Toolkit.Public.Model
     {
         private const string ProjectClassFile = "00.binon";
         private const string ProjectImageFile = "01.binong";
+        private const string ProjectImageSmallFile = "01.binong";
+        private const string ProjectImageLargeFile = "02.binong";
+        private const string ProjectImageLandscapeFile = "03.binong";
 
         public string bimServerId;
         public string nameProject;
         public string dateLastChange;
         public string imgUrl;
+        public string imgUrlSmall;
+        public string imgUrlLarge;
+        public string imgUrlLandscape;
         public List<BSDocument> documents;
 
         // ---------------------------------------------------------------------------
@@ -51,6 +57,27 @@ namespace BIMservercenter.Toolkit.Public.Model
         private string ProjectImagePath(string projectPath)
         {
             return Path.Combine(projectPath, ProjectImageFile);
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private string ProjectImageSmallPath(string projectPath)
+        {
+            return Path.Combine(projectPath, ProjectImageSmallFile);
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private string ProjectImageLargePath(string projectPath)
+        {
+            return Path.Combine(projectPath, ProjectImageLargeFile);
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private string ProjectImageLandscapePath(string projectPath)
+        {
+            return Path.Combine(projectPath, ProjectImageLandscapeFile);
         }
 
         // ---------------------------------------------------------------------------
@@ -73,6 +100,19 @@ namespace BIMservercenter.Toolkit.Public.Model
         // Image
         // ---------------------------------------------------------------------------
 
+        private static async Task<Texture2D> PLoadTextureImageCommonAsync(
+                        string imgUrl,
+                        string projectImagePath,
+                        Texture2D defaultTexture = null)
+        {
+            if (File.Exists(projectImagePath) == true)
+                return BIMServerCenterUtilities.LoadTexture(projectImagePath);
+
+            return await BIMServerCenterUtilities.DownloadTextureAsync(imgUrl, defaultTexture);
+        }
+
+        // ---------------------------------------------------------------------------
+
         private async Task<Texture2D> PLoadTextureImageAsync(string rootPath = null, Texture2D defaultTexture = null)
         {
             if (rootPath != null)
@@ -81,12 +121,58 @@ namespace BIMservercenter.Toolkit.Public.Model
 
                 projectPath = ProjectPath(rootPath);
                 projectImagePath = ProjectImagePath(projectPath);
-
-                if (File.Exists(projectImagePath) == true)
-                    return BIMServerCenterUtilities.LoadTexture(projectImagePath);
+                return await PLoadTextureImageCommonAsync(imgUrl, projectImagePath, defaultTexture);
             }
 
             return await BIMServerCenterUtilities.DownloadTextureAsync(imgUrl, defaultTexture);
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private async Task<Texture2D> PLoadTextureImageSmallAsync(string rootPath = null, Texture2D defaultTexture = null)
+        {
+            if (rootPath != null)
+            {
+                string projectPath, projectImagePath;
+
+                projectPath = ProjectPath(rootPath);
+                projectImagePath = ProjectImageSmallPath(projectPath);
+                return await PLoadTextureImageCommonAsync(imgUrlSmall, projectImagePath, defaultTexture);
+            }
+
+            return await BIMServerCenterUtilities.DownloadTextureAsync(imgUrlSmall, defaultTexture);
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private async Task<Texture2D> PLoadTextureImageLargeAsync(string rootPath = null, Texture2D defaultTexture = null)
+        {
+            if (rootPath != null)
+            {
+                string projectPath, projectImagePath;
+
+                projectPath = ProjectPath(rootPath);
+                projectImagePath = ProjectImageLargePath(projectPath);
+                return await PLoadTextureImageCommonAsync(imgUrlLarge, projectImagePath, defaultTexture);
+            }
+
+            return await BIMServerCenterUtilities.DownloadTextureAsync(imgUrlLarge, defaultTexture);
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private async Task<Texture2D> PLoadTextureImageLandscapeAsync(string rootPath = null, Texture2D defaultTexture = null)
+        {
+            if (rootPath != null)
+            {
+                string projectPath, projectImagePath;
+
+                projectPath = ProjectPath(rootPath);
+                projectImagePath = ProjectImageLandscapePath(projectPath);
+                return await PLoadTextureImageCommonAsync(imgUrlLandscape, projectImagePath, defaultTexture);
+            }
+            
+            return await BIMServerCenterUtilities.DownloadTextureAsync(imgUrlLandscape, defaultTexture);
         }
 
         // ---------------------------------------------------------------------------
@@ -162,10 +248,16 @@ namespace BIMservercenter.Toolkit.Public.Model
             string projectPath;
             string projectJsonPath;
             string projectImagePath;
+            string projectImageSmallPath;
+            string projectImageLargePath;
+            string projectImageLandscapePath;
 
             projectPath = ProjectPath(rootPath);
             projectJsonPath = ProjectJsonPath(projectPath);
             projectImagePath = ProjectImagePath(projectPath);
+            projectImageSmallPath = ProjectImageSmallPath(projectPath);
+            projectImageLargePath = ProjectImageLargePath(projectPath);
+            projectImageLandscapePath = ProjectImageLandscapePath(projectPath);
 
             if (Directory.Exists(rootPath) == false)
                 Directory.CreateDirectory(rootPath);
@@ -194,9 +286,33 @@ namespace BIMservercenter.Toolkit.Public.Model
                 Texture2D projectTexture;
                 byte[] projectTextureData;
 
-                projectTexture = await PLoadTextureImageAsync();
-                projectTextureData = projectTexture.EncodeToJPG();
-                await BIMServerCenterUtilities.WriteDataAsync(projectTextureData, projectImagePath, false);
+                if (string.IsNullOrEmpty(imgUrl) == false)
+                {
+                    projectTexture = await PLoadTextureImageAsync();
+                    projectTextureData = projectTexture.EncodeToJPG();
+                    await BIMServerCenterUtilities.WriteDataAsync(projectTextureData, projectImagePath, false);
+                }
+
+                if (string.IsNullOrEmpty(imgUrlSmall) == false)
+                {
+                    projectTexture = await PLoadTextureImageSmallAsync();
+                    projectTextureData = projectTexture.EncodeToJPG();
+                    await BIMServerCenterUtilities.WriteDataAsync(projectTextureData, projectImageSmallPath, false);
+                }
+
+                if (string.IsNullOrEmpty(imgUrlLarge) == false)
+                {
+                    projectTexture = await PLoadTextureImageLargeAsync();
+                    projectTextureData = projectTexture.EncodeToJPG();
+                    await BIMServerCenterUtilities.WriteDataAsync(projectTextureData, projectImageLargePath, false);
+                }
+
+                if (string.IsNullOrEmpty(imgUrlLandscape) == false)
+                {
+                    projectTexture = await PLoadTextureImageLandscapeAsync();
+                    projectTextureData = projectTexture.EncodeToJPG();
+                    await BIMServerCenterUtilities.WriteDataAsync(projectTextureData, projectImageLandscapePath, false);
+                }
             }
 
             return true;
@@ -236,6 +352,9 @@ namespace BIMservercenter.Toolkit.Public.Model
                 nameProject = bSProject.nameProject;
                 dateLastChange = bSProject.dateLastChange;
                 imgUrl = bSProject.imgUrl;
+                imgUrlSmall = bSProject.imgUrlSmall;
+                imgUrlLarge = bSProject.imgUrlLarge;
+                imgUrlLandscape = bSProject.imgUrlLandscape;
                 documents = bSProject.documents;
 
                 return true;

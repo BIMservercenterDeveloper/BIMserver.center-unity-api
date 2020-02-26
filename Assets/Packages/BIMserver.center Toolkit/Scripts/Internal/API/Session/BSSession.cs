@@ -154,6 +154,21 @@ namespace BIMservercenter.Toolkit.Internal.API.Session
 
         // ---------------------------------------------------------------------------
 
+        public void ProjectEducationalList(BSLanguage bSLanguage, BSSessionDelegate sessionDelegate)
+        {
+            BSIResponse response;
+            string command;
+            BSSessionCommand sessionCommand;
+
+            response = new BSProjectEducationalListResponse();
+            command = BSProjectEducationalListRequest.ProjectEducationalListRequest(bSLanguage, sessionId);
+
+            sessionCommand = new BSSessionCommand(command, response, this, sessionDelegate);
+            sessionCommand.Execute();
+        }
+
+        // ---------------------------------------------------------------------------
+
         public void ProjectWith3DList(BSLanguage bSLanguage, BSSessionDelegate sessionDelegate)
         {
             BSIResponse response;
@@ -162,6 +177,21 @@ namespace BIMservercenter.Toolkit.Internal.API.Session
 
             response = new BSProjectWith3DListResponse();
             command = BSProjectWith3DListRequest.ProjectWith3DListRequest(bSLanguage, sessionId);
+
+            sessionCommand = new BSSessionCommand(command, response, this, sessionDelegate);
+            sessionCommand.Execute();
+        }
+
+        // ---------------------------------------------------------------------------
+
+        public void ProjectEducationalWith3DList(BSLanguage bSLanguage, BSSessionDelegate sessionDelegate)
+        {
+            BSIResponse response;
+            string command;
+            BSSessionCommand sessionCommand;
+
+            response = new BSProjectEducationalWith3DListResponse();
+            command = BSProjectEducationalWith3DListRequest.ProjectEducationalWith3DListRequest(bSLanguage, sessionId);
 
             sessionCommand = new BSSessionCommand(command, response, this, sessionDelegate);
             sessionCommand.Execute();

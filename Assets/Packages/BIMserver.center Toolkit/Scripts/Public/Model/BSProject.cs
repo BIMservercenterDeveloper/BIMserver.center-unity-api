@@ -16,6 +16,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -43,8 +44,33 @@ namespace BIMservercenter.Toolkit.Public.Model
         /// </summary>
         /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
         /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
+        [Obsolete]
         public async Task<Texture2D> LoadTextureImageAsync(string rootPath = null, Texture2D defaultTexture = null)
         { return await PLoadTextureImageAsync(rootPath, defaultTexture); }
+
+        /// <summary>
+        /// Call this method to load the small project image into a Texture2D object.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageSmallAsync(string rootPath = null, Texture2D defaultTexture = null)
+        { return await PLoadTextureImageSmallAsync(rootPath, defaultTexture); }
+
+        /// <summary>
+        /// Call this method to load the large project image into a Texture2D object.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageLargeAsync(string rootPath = null, Texture2D defaultTexture = null)
+        { return await PLoadTextureImageLargeAsync(rootPath, defaultTexture); }
+
+        /// <summary>
+        /// Call this method to load landscape the project image into a Texture2D object.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageLanscapeAsync(string rootPath = null, Texture2D defaultTexture = null)
+        { return await PLoadTextureImageLandscapeAsync(rootPath, defaultTexture); }
 
         // ---------------------------------------------------------------------------
         // Gltf

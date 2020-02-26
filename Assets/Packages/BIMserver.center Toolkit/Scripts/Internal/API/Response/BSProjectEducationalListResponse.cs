@@ -25,17 +25,17 @@ using System.Xml;
 
 namespace BIMservercenter.Toolkit.Internal.API.Response
 {
-    public class BSProjectWith3DListResponse : BSBaseResponse
+    public class BSProjectEducationalListResponse : BSBaseResponse
     {
         public override void OnSucced(string response, BSSession session, BSSessionDelegate sessionDelegate, object extras)
         {
             XmlDocument xmlDocument;
-            BSProjectWith3DListSchema schema;
+            BSProjectEducationalListSchema schema;
 
             xmlDocument = new XmlDocument();
             xmlDocument.LoadXml(response);
 
-            schema = BSXmlParser<BSProjectWith3DListSchema>.Parse(xmlDocument.DocumentElement.InnerXml);
+            schema = BSXmlParser<BSProjectEducationalListSchema>.Parse(xmlDocument.DocumentElement.InnerXml);
 
             {
                 List<BSMProject> projectList;
@@ -74,7 +74,7 @@ namespace BIMservercenter.Toolkit.Internal.API.Response
                     projectList.Add(project);
                 }
 
-                sessionDelegate.funcFinishProjectWith3DListRequest(projectList);
+                sessionDelegate.funcFinishProjectEducationalListRequest(projectList);
             }
         }
     }

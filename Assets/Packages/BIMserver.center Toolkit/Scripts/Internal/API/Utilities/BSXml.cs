@@ -16,6 +16,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+using System.Collections.Generic;
 using System.Xml;
 
 namespace BIMservercenter.Toolkit.Internal.API.Utilities
@@ -35,6 +36,38 @@ namespace BIMservercenter.Toolkit.Internal.API.Utilities
             element.InnerText = value;
 
             xmlParentNode.AppendChild(element);
+        }
+
+        public static XmlNode SearchNodeByName(string name, XmlNodeList xmlNodeList)
+        {
+            int numElements;
+
+            numElements = xmlNodeList.Count;
+
+            for (int i = 0; i < numElements; i++)
+            {
+                if (xmlNodeList[i].Name == name)
+                    return xmlNodeList[i];
+            }
+
+            return null;
+        }
+
+        public static List<XmlNode> SearchNodesByName(string name, XmlNodeList xmlNodeList)
+        {
+            List<XmlNode> xmlNodes;
+            int numElements;
+
+            xmlNodes = new List<XmlNode>();
+            numElements = xmlNodeList.Count;
+
+            for (int i = 0; i < numElements; i++)
+            {
+                if (xmlNodeList[i].Name == name)
+                    xmlNodes.Add(xmlNodeList[i]);
+            }
+
+            return xmlNodes;
         }
     }
 }

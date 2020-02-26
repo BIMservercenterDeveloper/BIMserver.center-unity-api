@@ -16,11 +16,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using BIMservercenter.Toolkit.Internal.Utilities;
 using BIMservercenter.Toolkit.Public.Model;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Events;
 
 namespace BIMservercenter.Toolkit
 {
@@ -100,12 +98,24 @@ namespace BIMservercenter.Toolkit
         /// </summary>
         public static async Task<BSResponseList<BSProject>> GetBSProjectListAsync(BSLanguage bSLanguage = BSLanguage.English)
         { return await PGetBSProjectListAsync(bSLanguage); }
+        
+        /// <summary>
+        /// Call this method to get all the educational projects from your BIMserver.center account.
+        /// </summary>
+        public static async Task<BSResponseList<BSProject>> GetBSProjectEducationalListAsync(BSLanguage bSLanguage = BSLanguage.English)
+        { return await PGetBSProjectEducationalListAsync(bSLanguage); }
 
         /// <summary>
         /// Call this method to get all the projects with 3D view from your BIMserver.center account.
         /// </summary>
         public static async Task<BSResponseList<BSProject>> GetBSProjectWith3DListAsync(BSLanguage bSLanguage = BSLanguage.English)
-        { return await PGetBSProjectWith3DListAsync(bSLanguage); }
+        { return await PGetBSProjectWith3DListAsync(bSLanguage); }        
+        
+        /// <summary>
+        /// Call this method to get all the educational projects with 3D view from your BIMserver.center account.
+        /// </summary>
+        public static async Task<BSResponseList<BSProject>> GetBSProjectEducationalWith3DListAsync(BSLanguage bSLanguage = BSLanguage.English)
+        { return await PGetBSProjectEducationalWith3DListAsync(bSLanguage); }
 
         /// <summary>
         /// Call this method to append all the documents into the project.

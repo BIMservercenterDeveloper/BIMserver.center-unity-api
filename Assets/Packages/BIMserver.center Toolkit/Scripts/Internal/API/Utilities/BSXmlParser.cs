@@ -26,6 +26,75 @@ namespace BIMservercenter.Toolkit.Internal.API.Utilities
 {
     public class BSXmlParser<T>
     {
+        private static IList ParseList(string data, Type type)
+        {
+            Type makeGeneric;
+            IList list;
+            XmlDocument xmlDocument;
+            int numItems;
+            List<XmlNode> itemList;
+
+            makeGeneric = typeof(List<>).MakeGenericType(type);
+            list = (IList)Activator.CreateInstance(makeGeneric);
+            xmlDocument = new XmlDocument();
+
+            xmlDocument.LoadXml(data);
+
+            {
+                string numItemsString;
+
+                numItemsString = BSXml.SearchNodeByName("count", xmlDocument.DocumentElement.ChildNodes).InnerText;
+
+                numItems = int.Parse(numItemsString);
+            }
+
+            itemList = BSXml.SearchNodesByName("item", xmlDocument.DocumentElement.ChildNodes);
+
+            if (itemList.Count != numItems)
+                return list;
+
+            if (type == typeof(string))
+            {
+                for (int i = 0; i < numItems; i++)
+                {
+                    object result;
+                    result = itemList[i].InnerText;
+                    list.Add(result);
+                }
+            }
+            else if (type.IsPrimitive == true)
+            {
+                for (int i = 0; i < numItems; i++)
+                {
+                    object result;
+                    result = Convert.ChangeType(itemList[i].InnerText, type);
+
+                    list.Add(result);
+                }
+            }
+            else
+            {
+                Type bsXmlSerializationType;
+                ConstructorInfo constructorInfo;
+                MethodInfo methodInfo;
+                object bsXmlSerialization;
+
+                bsXmlSerializationType = typeof(BSXmlParser<>).MakeGenericType(type);
+                constructorInfo = bsXmlSerializationType.GetConstructor(Type.EmptyTypes);
+                methodInfo = bsXmlSerializationType.GetMethod("Parse");
+                bsXmlSerialization = constructorInfo.Invoke(new object[] { });
+
+                for (int i = 0; i < numItems; i++)
+                {
+                    object result;
+                    result = methodInfo.Invoke(bsXmlSerialization, new object[] { itemList[i].OuterXml });
+
+                    list.Add(result);
+                }
+            }
+            return list;
+        }
+
         public static T Parse(string data)
         {
             T instance;
@@ -57,80 +126,44 @@ namespace BIMservercenter.Toolkit.Internal.API.Utilities
                     {
                         propertyInfo.SetValue(instance, xmlNode.InnerText);
                     }
-                    else if(propertyInfo.PropertyType.IsPrimitive)
+                    else if (propertyInfo.PropertyType.IsPrimitive)
                     {
-                        var converted = Convert.ChangeType(xmlDocument.DocumentElement.ChildNodes[i].InnerText, propertyInfo.PropertyType);
+                        object converted;
+                        converted = Convert.ChangeType(xmlNode.InnerText, propertyInfo.PropertyType);
 
                         propertyInfo.SetValue(instance, converted);
+                    }
+                    else
+                    {
+                        Type bsXmlSerializationType;
+                        ConstructorInfo constructorInfo;
+                        MethodInfo methodInfo;
+                        object bsXmlSerialization;
+                        object result;
+
+                        bsXmlSerializationType = typeof(BSXmlParser<>).MakeGenericType(propertyInfo.GetType());
+                        constructorInfo = bsXmlSerializationType.GetConstructor(Type.EmptyTypes);
+                        methodInfo = bsXmlSerializationType.GetMethod("Parse");
+                        bsXmlSerialization = constructorInfo.Invoke(new object[] { });
+
+                        result = methodInfo.Invoke(bsXmlSerialization, new object[] { xmlNode.OuterXml });
+
+                        propertyInfo.SetValue(instance, result);
                     }
                 }
                 else
                 {
                     Type propertyType;
-                    propertyType = propertyInfo.PropertyType.GetGenericArguments()[0];
+                    IList parsedList;
 
-                    propertyInfo.SetValue(instance, ParseList(xmlNode.OuterXml, propertyType));
+                    propertyType = propertyInfo.PropertyType.GetGenericArguments()[0];
+                    parsedList = ParseList(xmlNode.OuterXml, propertyType);
+
+                    propertyInfo.SetValue(instance, parsedList);
                 }
             }
 
             return instance;
-        }
-
-        private static IList ParseList(string data, Type type)
-        {
-            Type makeGeneric;
-            IList list;
-            XmlDocument xmlDocument;
-            int numElements;
-
-            makeGeneric = typeof(List<>).MakeGenericType(type);
-            list = (IList)Activator.CreateInstance(makeGeneric);
-            xmlDocument = new XmlDocument();
-
-            xmlDocument.LoadXml(data);
-
-            numElements = int.Parse(xmlDocument.DocumentElement.FirstChild.InnerText);
-
-            if (type == typeof(string))
-            {
-                for (int i = 1; i <= numElements; i++)
-                {
-                    object result;
-                    result = xmlDocument.DocumentElement.ChildNodes[i].InnerText;
-                    list.Add(result);
-                }
-            }
-            else if (type.IsPrimitive == true)
-            {
-                for (int i = 1; i <= numElements; i++)
-                {
-                    object result;
-                    result = Convert.ChangeType(xmlDocument.DocumentElement.ChildNodes[i].InnerText, type);
-
-                    list.Add(result);
-                }
-            }
-            else
-            {
-                Type bsXmlSerializationType;
-                ConstructorInfo constructorInfo;
-                MethodInfo methodInfo;
-                object bsXmlSerialization;
-
-                bsXmlSerializationType = typeof(BSXmlParser<>).MakeGenericType(type);
-                constructorInfo = bsXmlSerializationType.GetConstructor(Type.EmptyTypes);
-                methodInfo = bsXmlSerializationType.GetMethod("Parse");
-                bsXmlSerialization = constructorInfo.Invoke(new object[] { });
-
-                for (int i = 1; i <= numElements; i++)
-                {
-                    object result;
-                    result = methodInfo.Invoke(bsXmlSerialization, new object[] { xmlDocument.DocumentElement.ChildNodes[i].OuterXml });
-
-                    list.Add(result);
-                }
-            }
-            return list;
         }
     }
 }

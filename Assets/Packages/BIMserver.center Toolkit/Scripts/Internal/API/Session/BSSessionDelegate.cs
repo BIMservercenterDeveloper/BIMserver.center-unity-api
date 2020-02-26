@@ -32,8 +32,14 @@ namespace BIMservercenter.Toolkit.Internal.API.Session
         public delegate void FinishProjectListRequest(List<BSMProject> projectList);
         public FinishProjectListRequest funcFinishProjectListRequest = null;
 
+        public delegate void FinishProjectEducationalListRequest(List<BSMProject> projectEducationalList);
+        public FinishProjectListRequest funcFinishProjectEducationalListRequest = null;
+
         public delegate void FinishProjectWith3DListRequest(List<BSMProject> projectWith3DList);
         public FinishProjectWith3DListRequest funcFinishProjectWith3DListRequest = null;
+
+        public delegate void FinishProjectEducationalWith3DListRequest(List<BSMProject> projectEducationalWith3DList);
+        public FinishProjectWith3DListRequest funcFinishProjectEducationalWith3DListRequest = null;
 
         public delegate void FinishDocumentListRequest(List<BSMDocument> documentList);
         public FinishDocumentListRequest funcFinishDocumentListRequest = null;

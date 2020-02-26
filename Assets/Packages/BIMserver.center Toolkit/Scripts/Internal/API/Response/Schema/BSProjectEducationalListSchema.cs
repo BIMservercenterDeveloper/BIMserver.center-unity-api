@@ -20,9 +20,9 @@ using System.Collections.Generic;
 
 namespace BIMservercenter.Toolkit.Internal.API.Response.Schema
 {
-    public class BSProjectWith3DItem
+    public class BSProjectEducationalItem
     {
-        public BSProjectWith3DItem()
+        public BSProjectEducationalItem()
         {
             id = null;
             nombre = null;
@@ -82,13 +82,13 @@ namespace BIMservercenter.Toolkit.Internal.API.Response.Schema
         public List<string> type_project_edit { get; set; }
     }
 
-    public class BSProjectWith3DListSchema : BSBaseSchema
+    public class BSProjectEducationalListSchema : BSBaseSchema
     {
-        public BSProjectWith3DListSchema()
+        public BSProjectEducationalListSchema()
         {
             list = null;
         }
 
-        public List<BSProjectWith3DItem> list { get; set; }
+        public List<BSProjectEducationalItem> list { get; set; }
     }
 }

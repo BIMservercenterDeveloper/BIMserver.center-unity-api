@@ -126,6 +126,7 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                 await gltfObject.ConstructSceneAsync(gltfObject.scenes[i], rootObject);
             }
 
+            rootObject.SetActive(false);
             rootObject.transform.position = Vector3.zero;
             return gltfObject.GameObjectReference = rootObject;
         }
@@ -876,7 +877,7 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                 glTFExtras = new BSGltfExtras();
                 glTFExtras.ID = node.extras.bsvdescidx;
                 glTFExtras.Name = bimServerCenterDescriptions[glTFExtras.ID].bsvname;
-                glTFExtras.GUID = bimServerCenterDescriptions[glTFExtras.ID].bsvguid;                    
+                glTFExtras.GUID = bimServerCenterDescriptions[glTFExtras.ID].bsvguid;
 
                 if (bimServerCenterDescriptions[glTFExtras.ID].bsvgenericattrs != null)
                 {
@@ -1076,7 +1077,7 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                 }
             }
 
-            if (meshesTopologyTriangles.Count > 0)                    
+            if (meshesTopologyTriangles.Count > 0)
             {
                 Mesh combinedMesh;
                 CombineInstance[] combinedInstances;
@@ -1156,9 +1157,6 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
                 gltfMeshPrimitive = gltfMesh.primitives[i];
                 meshPrimitiveMaterial = gltfObject.materials[gltfMeshPrimitive.material].Material;
-
-                if (gltfMeshPrimitive.Attributes.COLOR_0 >= 0)
-                    meshPrimitiveMaterial.EnableKeyword("_VERTEX_COLORS");
 
                 if (materialList.Contains(meshPrimitiveMaterial) == false)
                     materialList.Add(meshPrimitiveMaterial);

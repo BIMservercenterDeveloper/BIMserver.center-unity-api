@@ -52,7 +52,7 @@ namespace BIMservercenter.Toolkit
             BIMServerCenterAssertion.AssertNotEquals(pInstance.applicationGUID, string.Empty);
             Debug.Assert(pInstance.applicationGUID != string.Empty, "BIMServerCenter.applicationGUID must be different from empty.");
         }
-        
+
         // ---------------------------------------------------------------------------
         // Initialization
         // ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ namespace BIMservercenter.Toolkit
             if (Application.isPlaying == false)
                 InitializeInstance();
         }
-        
+
         // ---------------------------------------------------------------------------
         // Instance Activation
         // ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ namespace BIMservercenter.Toolkit
             SetActiveInstance(pInstance, false);
             SetActiveInstance(instance, true);
         }
-        
+
         // ---------------------------------------------------------------------------
         // Server Functions
         // ---------------------------------------------------------------------------
@@ -161,9 +161,9 @@ namespace BIMservercenter.Toolkit
             BSResponse bSResponse;
 
             bSResponse = new BSResponse();
-            bSResponse.IsSucced = false;  
-            
-            Instance.bsDelegate.funcFinishLoginRequest = () => 
+            bSResponse.IsSucced = false;
+
+            Instance.bsDelegate.funcFinishLoginRequest = () =>
             {
                 bSResponse.IsSucced = true;
             };
@@ -183,7 +183,7 @@ namespace BIMservercenter.Toolkit
             bSResponse = new BSResponse();
             bSResponse.IsSucced = false;
 
-            Instance.bsDelegate.funcFinishLogoutRequest = () => 
+            Instance.bsDelegate.funcFinishLogoutRequest = () =>
             {
                 bSResponse.IsSucced = true;
             };
@@ -204,13 +204,35 @@ namespace BIMservercenter.Toolkit
             bSResponseList.IsSucced = false;
             bSResponseList.ListElements = null;
 
-            Instance.bsDelegate.funcFinishProjectListRequest = (projectList) => 
+            Instance.bsDelegate.funcFinishProjectListRequest = (projectList) =>
             {
                 bSResponseList.IsSucced = true;
                 bSResponseList.ListElements = projectList;
             };
 
             await Task.Run(() => Instance.bsSession.ProjectList(bSLanguage, Instance.bsDelegate));
+            await Instance.CheckForErrorsAsync(bSResponseList);
+
+            return bSResponseList;
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private static async Task<BSResponseList<BSMProject>> PGetProjectEducationalListAsync(BSLanguage bSLanguage)
+        {
+            BSResponseList<BSMProject> bSResponseList;
+
+            bSResponseList = new BSResponseList<BSMProject>();
+            bSResponseList.IsSucced = false;
+            bSResponseList.ListElements = null;
+
+            Instance.bsDelegate.funcFinishProjectEducationalListRequest = (projectEducationalList) =>
+            {
+                bSResponseList.IsSucced = true;
+                bSResponseList.ListElements = projectEducationalList;
+            };
+
+            await Task.Run(() => Instance.bsSession.ProjectEducationalList(bSLanguage, Instance.bsDelegate));
             await Instance.CheckForErrorsAsync(bSResponseList);
 
             return bSResponseList;
@@ -226,13 +248,35 @@ namespace BIMservercenter.Toolkit
             bSResponseList.IsSucced = false;
             bSResponseList.ListElements = null;
 
-            Instance.bsDelegate.funcFinishProjectWith3DListRequest = (projectWith3DList) => 
+            Instance.bsDelegate.funcFinishProjectWith3DListRequest = (projectWith3DList) =>
             {
                 bSResponseList.IsSucced = true;
                 bSResponseList.ListElements = projectWith3DList;
             };
 
             await Task.Run(() => Instance.bsSession.ProjectWith3DList(bSLanguage, Instance.bsDelegate));
+            await Instance.CheckForErrorsAsync(bSResponseList);
+
+            return bSResponseList;
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private static async Task<BSResponseList<BSMProject>> PGetProjectEducationalWith3DListAsync(BSLanguage bSLanguage)
+        {
+            BSResponseList<BSMProject> bSResponseList;
+
+            bSResponseList = new BSResponseList<BSMProject>();
+            bSResponseList.IsSucced = false;
+            bSResponseList.ListElements = null;
+
+            Instance.bsDelegate.funcFinishProjectEducationalWith3DListRequest = (projectEducationalWith3DList) =>
+            {
+                bSResponseList.IsSucced = true;
+                bSResponseList.ListElements = projectEducationalWith3DList;
+            };
+
+            await Task.Run(() => Instance.bsSession.ProjectEducationalWith3DList(bSLanguage, Instance.bsDelegate));
             await Instance.CheckForErrorsAsync(bSResponseList);
 
             return bSResponseList;
@@ -248,7 +292,7 @@ namespace BIMservercenter.Toolkit
             bSResponseList.IsSucced = false;
             bSResponseList.ListElements = null;
 
-            Instance.bsDelegate.funcFinishDocumentListRequest = (documentList) => 
+            Instance.bsDelegate.funcFinishDocumentListRequest = (documentList) =>
             {
                 bSResponseList.IsSucced = true;
                 bSResponseList.ListElements = documentList;
@@ -366,6 +410,9 @@ namespace BIMservercenter.Toolkit
                     bSProject.nameProject = bSModelProject.name;
                     bSProject.dateLastChange = bSModelProject.dateLastChange;
                     bSProject.imgUrl = bSModelProject.img;
+                    bSProject.imgUrlSmall = bSModelProject.imgSmall;
+                    bSProject.imgUrlLarge = bSModelProject.imgLarge;
+                    bSProject.imgUrlLandscape = bSModelProject.imgLandscape;
 
                     bSProjectList.Add(bSProject);
                 }
@@ -384,6 +431,59 @@ namespace BIMservercenter.Toolkit
             }
 
             return bSResponseProjectList;
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private static async Task<BSResponseList<BSProject>> PGetBSProjectEducationalListAsync(BSLanguage bSLanguage)
+        {
+            BSResponseList<BSProject> bSResponseProjectEducationalList;
+            BSResponseList<BSMProject> bSResponseModelProjectEducationalList;
+
+            bSResponseProjectEducationalList = new BSResponseList<BSProject>();
+            bSResponseModelProjectEducationalList = await PGetProjectEducationalListAsync(bSLanguage);
+
+            if (bSResponseModelProjectEducationalList.IsSucced == true)
+            {
+                List<BSProject> bSProjectEducationalList;
+                List<BSMProject> bSModelProjectEducationalModelList;
+
+                bSProjectEducationalList = new List<BSProject>();
+                bSModelProjectEducationalModelList = bSResponseModelProjectEducationalList.ListElements;
+
+                for (int i = 0; i < bSModelProjectEducationalModelList.Count; i++)
+                {
+                    BSProject bSProject;
+                    BSMProject bSModelProject;
+
+                    bSProject = new BSProject();
+                    bSModelProject = bSModelProjectEducationalModelList[i];
+
+                    bSProject.bimServerId = bSModelProject.bimServerId;
+                    bSProject.nameProject = bSModelProject.name;
+                    bSProject.dateLastChange = bSModelProject.dateLastChange;
+                    bSProject.imgUrl = bSModelProject.img;
+                    bSProject.imgUrlSmall = bSModelProject.imgSmall;
+                    bSProject.imgUrlLarge = bSModelProject.imgLarge;
+                    bSProject.imgUrlLandscape = bSModelProject.imgLandscape;
+
+                    bSProjectEducationalList.Add(bSProject);
+                }
+
+                bSResponseProjectEducationalList.IsSucced = true;
+                bSResponseProjectEducationalList.ErrorMessage = null;
+                bSResponseProjectEducationalList.ErrorType = BSResponseTypeError.Unknown;
+                bSResponseProjectEducationalList.ListElements = bSProjectEducationalList;
+            }
+            else
+            {
+                bSResponseProjectEducationalList.IsSucced = false;
+                bSResponseProjectEducationalList.ErrorMessage = bSResponseModelProjectEducationalList.ErrorMessage;
+                bSResponseProjectEducationalList.ErrorType = bSResponseModelProjectEducationalList.ErrorType;
+                bSResponseProjectEducationalList.ListElements = null;
+            }
+
+            return bSResponseProjectEducationalList;
         }
 
         // ---------------------------------------------------------------------------
@@ -416,6 +516,9 @@ namespace BIMservercenter.Toolkit
                     bSProject.nameProject = bSModelProject.name;
                     bSProject.dateLastChange = bSModelProject.dateLastChange;
                     bSProject.imgUrl = bSModelProject.img;
+                    bSProject.imgUrlSmall = bSModelProject.imgSmall;
+                    bSProject.imgUrlLarge = bSModelProject.imgLarge;
+                    bSProject.imgUrlLandscape = bSModelProject.imgLandscape;
 
                     bSProjectWith3DList.Add(bSProject);
                 }
@@ -434,6 +537,59 @@ namespace BIMservercenter.Toolkit
             }
 
             return bSResponseProjectWith3DList;
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private static async Task<BSResponseList<BSProject>> PGetBSProjectEducationalWith3DListAsync(BSLanguage bSLanguage)
+        {
+            BSResponseList<BSProject> bSResponseProjectEducationalWith3DList;
+            BSResponseList<BSMProject> bSResponseModelProjectEducationalWith3DList;
+
+            bSResponseProjectEducationalWith3DList = new BSResponseList<BSProject>();
+            bSResponseModelProjectEducationalWith3DList = await PGetProjectEducationalWith3DListAsync(bSLanguage);
+
+            if (bSResponseModelProjectEducationalWith3DList.IsSucced == true)
+            {
+                List<BSProject> bSProjectEducationalWith3DList;
+                List<BSMProject> bSModelProjectEducationalWith3DModelList;
+
+                bSProjectEducationalWith3DList = new List<BSProject>();
+                bSModelProjectEducationalWith3DModelList = bSResponseModelProjectEducationalWith3DList.ListElements;
+
+                for (int i = 0; i < bSModelProjectEducationalWith3DModelList.Count; i++)
+                {
+                    BSProject bSProject;
+                    BSMProject bSModelProject;
+
+                    bSProject = new BSProject();
+                    bSModelProject = bSModelProjectEducationalWith3DModelList[i];
+
+                    bSProject.bimServerId = bSModelProject.bimServerId;
+                    bSProject.nameProject = bSModelProject.name;
+                    bSProject.dateLastChange = bSModelProject.dateLastChange;
+                    bSProject.imgUrl = bSModelProject.img;
+                    bSProject.imgUrlSmall = bSModelProject.imgSmall;
+                    bSProject.imgUrlLarge = bSModelProject.imgLarge;
+                    bSProject.imgUrlLandscape = bSModelProject.imgLandscape;
+
+                    bSProjectEducationalWith3DList.Add(bSProject);
+                }
+
+                bSResponseProjectEducationalWith3DList.IsSucced = true;
+                bSResponseProjectEducationalWith3DList.ErrorMessage = null;
+                bSResponseProjectEducationalWith3DList.ErrorType = BSResponseTypeError.Unknown;
+                bSResponseProjectEducationalWith3DList.ListElements = bSProjectEducationalWith3DList;
+            }
+            else
+            {
+                bSResponseProjectEducationalWith3DList.IsSucced = false;
+                bSResponseProjectEducationalWith3DList.ErrorMessage = bSResponseModelProjectEducationalWith3DList.ErrorMessage;
+                bSResponseProjectEducationalWith3DList.ErrorType = bSResponseModelProjectEducationalWith3DList.ErrorType;
+                bSResponseProjectEducationalWith3DList.ListElements = null;
+            }
+
+            return bSResponseProjectEducationalWith3DList;
         }
     }
 }

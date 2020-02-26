@@ -1,4 +1,4 @@
-﻿/*
+/*
 BIMserver.center license
 This file is part of BIMserver.center IFC frameworks.
 Copyright (c) 2017 BIMserver.center
@@ -27,6 +27,9 @@ namespace BIMservercenter.Toolkit.Internal.API.Model
         public string privacyType;
         public string collaborationRequestType;
         public string img;
+        public string imgSmall;
+        public string imgLarge;
+        public string imgLandscape;
 
         public List<string> typesProjectToEdit;
     }

@@ -30,12 +30,12 @@ namespace BIMservercenter.Toolkit.Internal.API.Response
         public override void OnSucced(string response, BSSession session, BSSessionDelegate sessionDelegate, object extras)
         {
             XmlDocument xmlDocument;
-            BSProjectWith3DListSchema schema;
+            BSProjectListSchema schema;
 
             xmlDocument = new XmlDocument();
             xmlDocument.LoadXml(response);
 
-            schema = BSXmlParser<BSProjectWith3DListSchema>.Parse(xmlDocument.DocumentElement.InnerXml);
+            schema = BSXmlParser<BSProjectListSchema>.Parse(xmlDocument.DocumentElement.InnerXml);
 
             {
                 List<BSMProject> projectList;
@@ -55,6 +55,9 @@ namespace BIMservercenter.Toolkit.Internal.API.Response
                     project.description = item.description_project;
                     project.idOwner = item.id_owner;
                     project.img = item.img;
+                    project.imgSmall = item.img_small;
+                    project.imgLarge = item.img_large;
+                    project.imgLandscape = item.img_landscape;
                     project.imgOwnerOpc = item.img_owner;
                     project.languageType = item.language;
                     project.name = item.nombre;
