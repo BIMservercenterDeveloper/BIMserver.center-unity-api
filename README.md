@@ -7,9 +7,10 @@ This repository contains a working implementation that you can use as a starting
 
 To start integrating your Unity 3D software with the platform, please, follow this steps:
 
-  1. Create a free user account if you don't have one by [clicking here](https://bimserver.center/)
-  2. Download a copy of this repository, read the documentation and play with the code provided.
-  3. In case of any doubt or problem, please, contact with us at developer@bimserver.center.
+  1. Create a free user account if you don't have one by [clicking here](https://bimserver.center) to manage bim projects and collaborate with others.
+  2. Create a free developer account if you don't have one by [clicking here](https://developers.bimserver.center) to get your developer and application ID.
+  3. Download a copy of this repository, read the documentation and play with the code provided.
+  4. In case of any doubt or problem, please, contact with us at developer@bimserver.center.
   
 Let's join us and start to leverage the power of Open BIM!
 
