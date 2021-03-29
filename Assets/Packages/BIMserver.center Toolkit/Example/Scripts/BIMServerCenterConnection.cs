@@ -16,8 +16,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+using BIMservercenter.Toolkit.Public.Utilities;
 using BIMservercenter.Toolkit.Public.Model;
 using System.Collections.Generic;
+using System.Threading;
 using System.IO;
 using UnityEngine;
 
@@ -87,13 +89,41 @@ namespace BIMservercenter.Toolkit.Example
 
                             temporalFolder = Path.Combine(Application.temporaryCachePath, "BIMserver.center Toolkit");
 
-                            //The project files belonging to the user are downloaded to the temporary directory.
-                            if (await bSProjectWith3D.SaveOnDiskAsync(temporalFolder) == true)
+                            //cancellationTokenSource.Cancel can be used to cancel the current task, BSExceptionCancellationRequested would be thrown.
+                            using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
                             {
-                                List<BSGltf> glTFs;
+                                try
+                                {
+                                    List<BSGltf> glTFs;
 
-                                //The project glTF files belonging to the user are loaded from the temporary directory.
-                                glTFs = await bSProjectWith3D.LoadGltfsAsync(temporalFolder, false);
+                                    //The project files belonging to the user are downloaded to the temporary directory.
+                                    await bSProjectWith3D.SaveOnDiskAsync(temporalFolder, null, cancellationTokenSource);
+
+                                    //The project glTF files belonging to the user are loaded from the temporary directory.
+                                    glTFs = await bSProjectWith3D.LoadGltfsAsync(temporalFolder, false, false, null, cancellationTokenSource);
+                                }
+                                catch (System.Exception exception)
+                                {
+                                    switch (exception)
+                                    {
+                                        case BSExceptionServerDownloadError serverDownloadError:
+                                            Debug.Log(serverDownloadError.Message);
+                                            //Handle server download exception.
+                                            break;
+                                        case BSExceptionNetworkDownloadError networkDownloadError:
+                                            Debug.Log(networkDownloadError.Message);
+                                            //Handle network download exception.
+                                            break;
+                                        case BSExceptionFailedToReadGLTF failedToReadGLTF:
+                                            Debug.Log(failedToReadGLTF.Message);
+                                            //Handle failed to read glTF exception.
+                                            break;
+                                        case BSExceptionCancellationRequested cancellationRequested:
+                                            Debug.Log(cancellationRequested.Message);
+                                            //Handle cancellation exception.
+                                            break;
+                                    }
+                                }
                             }
                         }
                     }

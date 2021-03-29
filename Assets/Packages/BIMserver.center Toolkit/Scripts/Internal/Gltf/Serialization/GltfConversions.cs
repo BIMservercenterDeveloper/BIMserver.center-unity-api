@@ -17,8 +17,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using BIMservercenter.Toolkit.Internal.Gltf.Schema;
-using System;
 using UnityEngine;
+using System;
 
 namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 {
@@ -54,31 +54,43 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return matrix;
         }
 
+        // ---------------------------------------------------------------------------
+
         internal static Color GetColorValue(this float[] colorArray)
         {
             return new Color(colorArray[0], colorArray[1], colorArray[2], colorArray.Length < 4 ? 1f : colorArray[3]);
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static float[] SetColorValue(this Color color)
         {
             return new[] { color.r, color.g, color.b, color.a };
         }
 
+        // ---------------------------------------------------------------------------
+
         internal static Vector2 GetVector2Value(this float[] vector2Array)
         {
             return new Vector2(vector2Array[0], vector2Array[1]);
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static float[] SetVector2Value(this Vector2 vector)
         {
             return new[] { vector.x, vector.y };
         }
 
+        // ---------------------------------------------------------------------------
+
         internal static Vector3 GetVector3Value(this float[] vector3Array, bool convert = true)
         {
             var vector = new Vector3(vector3Array[0], vector3Array[1], vector3Array[2]);
             return convert ? Vector3.Scale(vector, CoordinateSpaceConversionScale) : vector;
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static float[] SetVector3Value(this Vector3 vector, bool convert = true)
         {
@@ -89,6 +101,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             return new[] { vector.x, vector.y, vector.z };
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static Quaternion GetQuaternionValue(this float[] quaternionArray, bool convert = true)
         {
@@ -101,6 +115,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             return new Quaternion(axes.x, axes.y, axes.z, quaternionArray[3]);
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static float[] SetQuaternionValue(this Quaternion quaternion, bool convert = true)
         {
@@ -115,6 +131,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return new[] { axes.x, axes.y, axes.z, quaternion.w };
         }
 
+        // ---------------------------------------------------------------------------
+
         internal static Matrix4x4 GetMatrix4X4Value(this double[] matrixArray)
         {
             var matrix = new Matrix4x4(
@@ -125,6 +143,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             Matrix4x4 convert = Matrix4x4.Scale(CoordinateSpaceConversionScale);
             return convert * matrix * convert;
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static float[] SetMatrix4X4Value(this Matrix4x4 matrix)
         {
@@ -138,6 +158,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                 matrix.m03, matrix.m13, matrix.m23, matrix.m33
             };
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static void GetTrsProperties(this Matrix4x4 matrix, out Vector3 position, out Quaternion rotation, out Vector3 scale)
         {
@@ -156,6 +178,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             rotation = Quaternion.LookRotation(matrix.GetColumn(2), matrix.GetColumn(1));
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static int[] GetIntArray(this GltfAccessor accessor, bool flipFaces = true)
         {
@@ -201,6 +225,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return array;
         }
 
+        // ---------------------------------------------------------------------------
+
         internal static float[] GetFloatArray(this GltfAccessor accessor, bool flipFaces = true)
         {
             if (accessor.type != scalar)
@@ -245,6 +271,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return array;
         }
 
+        // ---------------------------------------------------------------------------
+
         internal static Vector2[] GetVector2Array(this GltfAccessor accessor, bool flip = true)
         {
             if (accessor.type != vec2 || accessor.componentType == GltfComponentType.UnsignedInt)
@@ -287,6 +315,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             return array;
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static Vector3[] GetVector3Array(this GltfAccessor accessor, bool convert = true)
         {
@@ -334,6 +364,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             return array;
         }
+
+        // ---------------------------------------------------------------------------
 
         internal static Vector4[] GetVector4Array(this GltfAccessor accessor, bool convert = true)
         {
@@ -385,6 +417,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return array;
         }
 
+        // ---------------------------------------------------------------------------
+
         internal static Color[] GetColorArray(this GltfAccessor accessor)
         {
             if (accessor.type != vec3 && accessor.type != vec4 || accessor.componentType == GltfComponentType.UnsignedInt)
@@ -427,6 +461,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return array;
         }
 
+        // ---------------------------------------------------------------------------
+
         private static void GetTypeDetails(GltfComponentType type, out int componentSize, out float maxValue)
         {
             componentSize = 1;
@@ -463,6 +499,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
         }
 
+        // ---------------------------------------------------------------------------
+
         private static int GetDiscreteElement(byte[] data, int offset, GltfComponentType type)
         {
             switch (type)
@@ -481,6 +519,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                     throw new Exception($"Unsupported type passed in: {type}");
             }
         }
+
+        // ---------------------------------------------------------------------------
 
         private static uint GetDiscreteUnsignedElement(byte[] data, int offset, GltfComponentType type)
         {

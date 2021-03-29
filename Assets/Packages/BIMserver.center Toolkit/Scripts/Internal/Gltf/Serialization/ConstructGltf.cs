@@ -18,15 +18,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using BIMservercenter.Toolkit.Internal.Gltf.AsyncAwaitUtil;
 using BIMservercenter.Toolkit.Internal.Gltf.Schema;
+using BIMservercenter.Toolkit.Public.Utilities;
 using BIMservercenter.Toolkit.Public.Model;
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
-using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.Rendering;
+using System.Collections;
+using System.Threading;
+using UnityEngine;
+using System.IO;
+using System;
 
 namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 {
@@ -58,9 +59,10 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
         /// </summary>
         /// <param name="gltfObject"></param>
         /// <returns>The new <see href="https://docs.unity3d.com/ScriptReference/GameObject.html">GameObject</see> of the final constructed <see cref="Schema.GltfScene"/></returns>
-        public static async void Construct(this GltfObject gltfObject)
+        /// <exception cref="BSExceptionCancellationRequested">Thrown when cancellation is requested</exception>    
+        public static async void Construct(this GltfObject gltfObject, bool generateColliders, CancellationToken cancellationToken, FuncProgressPercUpdate funcProgressPercUpdate)
         {
-            await gltfObject.ConstructAsync();
+            await gltfObject.ConstructAsync(generateColliders, cancellationToken, funcProgressPercUpdate);
         }
 
         /// <summary>
@@ -68,17 +70,12 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
         /// </summary>
         /// <param name="gltfObject"></param>
         /// <returns>The new <see href="https://docs.unity3d.com/ScriptReference/GameObject.html">GameObject</see> of the final constructed <see cref="Schema.GltfScene"/></returns>
-        public static async Task<GameObject> ConstructAsync(this GltfObject gltfObject)
+        /// <exception cref="BSExceptionCancellationRequested">Thrown when cancellation is requested</exception>   
+        public static async Task<GameObject> ConstructAsync(this GltfObject gltfObject, bool generateColliders, CancellationToken cancellationToken, FuncProgressPercUpdate funcProgressPercUpdate)
         {
             GameObject rootObject;
 
             if (gltfObject.UseBackgroundThread) await Update;
-
-            if (!gltfObject.asset.version.Contains("2.0"))
-            {
-                Debug.LogWarning($"Expected glTF 2.0, but this asset is using {gltfObject.asset.version}");
-                return null;
-            }
 
             if (gltfObject.Name != null && gltfObject.Name != string.Empty)
                 rootObject = new GameObject(gltfObject.Name);
@@ -91,21 +88,33 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             for (int i = 0; i < gltfObject.bufferViews?.Length; i++)
             {
-                await Task.Run(() => gltfObject.ConstructBufferView(gltfObject.bufferViews[i]));
+                if (cancellationToken.IsCancellationRequested == true)
+                    break;
+
+                await Task.Run(() => gltfObject.ConstructBufferView(gltfObject.bufferViews[i]), cancellationToken);
             }
 
             for (int i = 0; i < gltfObject.textures?.Length; i++)
             {
-                await gltfObject.ConstructTextureAsync(gltfObject.textures[i]);
+                if (cancellationToken.IsCancellationRequested == true)
+                    break;
+
+                await gltfObject.ConstructTextureAsync(gltfObject.textures[i], cancellationToken);
             }
 
             for (int i = 0; i < gltfObject.scenes?.Length; i++)
             {
+                if (cancellationToken.IsCancellationRequested == true)
+                    break;
+
                 gltfObject.ConstructSceneAccessorData(gltfObject.scenes[i]);
             }
 
             for (int i = 0; i < gltfObject.materials?.Length; i++)
             {
+                if (cancellationToken.IsCancellationRequested == true)
+                    break;
+
                 await gltfObject.ConstructMaterialAsync(gltfObject.materials[i], i);
             }
 
@@ -113,6 +122,9 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             for (int i = 0; i < gltfObject.animations?.Length; i++)
             {
+                if (cancellationToken.IsCancellationRequested == true)
+                    break;
+
                 gltfObject.ConstructAnimationAsync(gltfObject.animations[i], i);
             }
 
@@ -123,13 +135,24 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             for (int i = 0; i < gltfObject.scenes?.Length; i++)
             {
-                await gltfObject.ConstructSceneAsync(gltfObject.scenes[i], rootObject);
+                if (cancellationToken.IsCancellationRequested == true)
+                    break;
+
+                await gltfObject.ConstructSceneAsync(gltfObject.scenes[i], rootObject, generateColliders, cancellationToken, funcProgressPercUpdate);
+            }
+
+            if (cancellationToken.IsCancellationRequested == true)
+            {
+                GameObject.Destroy(rootObject);
+                throw new BSExceptionCancellationRequested();
             }
 
             rootObject.SetActive(false);
             rootObject.transform.position = Vector3.zero;
             return gltfObject.GameObjectReference = rootObject;
         }
+
+        // ---------------------------------------------------------------------------
 
         private static void ConstructBufferView(this GltfObject gltfObject, GltfBufferView bufferView)
         {
@@ -153,7 +176,9 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
         }
 
-        private static async Task ConstructTextureAsync(this GltfObject gltfObject, GltfTexture gltfTexture)
+        // ---------------------------------------------------------------------------
+
+        private static async Task ConstructTextureAsync(this GltfObject gltfObject, GltfTexture gltfTexture, CancellationToken cancellationToken)
         {
             if (gltfTexture.source >= 0)
             {
@@ -215,7 +240,7 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
                             if (gltfObject.UseBackgroundThread)
                             {
-                                await stream.ReadAsync(imageData, 0, (int)stream.Length);
+                                await stream.ReadAsync(imageData, 0, (int)stream.Length, cancellationToken);
                             }
                             else
                             {
@@ -251,10 +276,14 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
         }
 
+        // ---------------------------------------------------------------------------
+
         private static void ConstructAnimationAsync(this GltfObject gltfObject, GltfAnimation gltfAnimation, int animationId)
         {
             gltfAnimation.animation = CreateAnimationClip(gltfObject, gltfAnimation, animationId);
         }
+
+        // ---------------------------------------------------------------------------
 
         private static float GetCurveKeyframeLeftLinearSlope(Keyframe[] curveKeys, int keyframeIndex)
         {
@@ -271,10 +300,10 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return valueDelta / timeDelta;
         }
 
-        private static void SetTangentMode(AnimationCurve curve, int keyframeIndex, string interpolation)
-        {
-            var curveKeys = curve.keys;
+        // ---------------------------------------------------------------------------
 
+        private static void SetTangentMode(Keyframe[] curveKeys, int keyframeIndex, string interpolation)
+        {
             var key = curveKeys[keyframeIndex];
 
             switch (interpolation)
@@ -295,30 +324,32 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                     throw new NotImplementedException();
             }
 
-            curve.MoveKey(keyframeIndex, key);
+            curveKeys[keyframeIndex] = key;
         }
+
+        // ---------------------------------------------------------------------------
 
         static void SetTranslationCurve(AnimationClip Clip, Vector3[] pos, float[] keyframeInput, string mode, string relativePath)
         {
-            AnimationCurve posX, posY, posZ;
+            Keyframe[] keyframeArrayX, keyframeArrayY, keyframeArrayZ;
 
-            posX = new AnimationCurve();
-            posY = new AnimationCurve();
-            posZ = new AnimationCurve();
+            keyframeArrayX = new Keyframe[keyframeInput.Length];
+            keyframeArrayY = new Keyframe[keyframeInput.Length];
+            keyframeArrayZ = new Keyframe[keyframeInput.Length];
 
             for (int k = 0; k < keyframeInput.Length; k++)
             {
                 if (mode == "CUBICSPLINE")
                 {
-                    posX.AddKey(new Keyframe(keyframeInput[k], pos[k * 3 + 1].x, pos[k * 3].x, pos[k * 3 + 2].x));
-                    posY.AddKey(new Keyframe(keyframeInput[k], pos[k * 3 + 1].y, pos[k * 3].y, pos[k * 3 + 2].y));
-                    posZ.AddKey(new Keyframe(keyframeInput[k], pos[k * 3 + 1].z, pos[k * 3].z, pos[k * 3 + 2].z));
+                    keyframeArrayX[k] = new Keyframe(keyframeInput[k], pos[k * 3 + 1].x, pos[k * 3].x, pos[k * 3 + 2].x);
+                    keyframeArrayY[k] = new Keyframe(keyframeInput[k], pos[k * 3 + 1].y, pos[k * 3].y, pos[k * 3 + 2].y);
+                    keyframeArrayZ[k] = new Keyframe(keyframeInput[k], pos[k * 3 + 1].z, pos[k * 3].z, pos[k * 3 + 2].z);
                 }
                 else
                 {
-                    posX.AddKey(keyframeInput[k], pos[k].x);
-                    posY.AddKey(keyframeInput[k], pos[k].y);
-                    posZ.AddKey(keyframeInput[k], -pos[k].z);
+                    keyframeArrayX[k] = new Keyframe(keyframeInput[k], pos[k].x);
+                    keyframeArrayY[k] = new Keyframe(keyframeInput[k], pos[k].y);
+                    keyframeArrayZ[k] = new Keyframe(keyframeInput[k], -pos[k].z);
                 }
             }
 
@@ -326,42 +357,49 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             {
                 for (int k = 0; k < keyframeInput.Length; k++)
                 {
-
-                    SetTangentMode(posX, k, mode);
-                    SetTangentMode(posY, k, mode);
-                    SetTangentMode(posZ, k, mode);
+                    SetTangentMode(keyframeArrayX, k, mode);
+                    SetTangentMode(keyframeArrayY, k, mode);
+                    SetTangentMode(keyframeArrayZ, k, mode);
                 }
             }
 
-            Clip.SetCurve(relativePath, typeof(Transform), "localPosition.x", posX);
-            Clip.SetCurve(relativePath, typeof(Transform), "localPosition.y", posY);
-            Clip.SetCurve(relativePath, typeof(Transform), "localPosition.z", posZ);
+            AnimationCurve animationCurveX, animationCurveY, animationCurveZ;
+
+            animationCurveX = new AnimationCurve(keyframeArrayX);
+            animationCurveY = new AnimationCurve(keyframeArrayY);
+            animationCurveZ = new AnimationCurve(keyframeArrayZ);
+
+            Clip.SetCurve(relativePath, typeof(Transform), "localPosition.x", animationCurveX);
+            Clip.SetCurve(relativePath, typeof(Transform), "localPosition.y", animationCurveY);
+            Clip.SetCurve(relativePath, typeof(Transform), "localPosition.z", animationCurveZ);
         }
+
+        // ---------------------------------------------------------------------------
 
         static void SetRotationCurve(AnimationClip Clip, Vector4[] rot, float[] keyframeInput, string mode, string relativePath)
         {
-            AnimationCurve rotX, rotY, rotZ, rotW;
+            Keyframe[] keyframeArrayX, keyframeArrayY, keyframeArrayZ, keyframeArrayW;
 
-            rotX = new AnimationCurve();
-            rotY = new AnimationCurve();
-            rotZ = new AnimationCurve();
-            rotW = new AnimationCurve();
+            keyframeArrayX = new Keyframe[keyframeInput.Length];
+            keyframeArrayY = new Keyframe[keyframeInput.Length];
+            keyframeArrayZ = new Keyframe[keyframeInput.Length];
+            keyframeArrayW = new Keyframe[keyframeInput.Length];
 
             for (int k = 0; k < keyframeInput.Length; k++)
             {
                 if (mode == "CUBICSPLINE")
                 {
-                    rotX.AddKey(new Keyframe(keyframeInput[k], rot[k * 3 + 1].x, rot[k * 3].x, rot[k * 3 + 2].x));
-                    rotY.AddKey(new Keyframe(keyframeInput[k], rot[k * 3 + 1].y, rot[k * 3].y, rot[k * 3 + 2].y));
-                    rotZ.AddKey(new Keyframe(keyframeInput[k], rot[k * 3 + 1].z, rot[k * 3].z, rot[k * 3 + 2].z));
-                    rotW.AddKey(new Keyframe(keyframeInput[k], rot[k * 3 + 1].w, rot[k * 3].w, rot[k * 3 + 2].w));
+                    keyframeArrayX[k] = (new Keyframe(keyframeInput[k], rot[k * 3 + 1].x, rot[k * 3].x, rot[k * 3 + 2].x));
+                    keyframeArrayY[k] = (new Keyframe(keyframeInput[k], rot[k * 3 + 1].y, rot[k * 3].y, rot[k * 3 + 2].y));
+                    keyframeArrayZ[k] = (new Keyframe(keyframeInput[k], rot[k * 3 + 1].z, rot[k * 3].z, rot[k * 3 + 2].z));
+                    keyframeArrayW[k] = (new Keyframe(keyframeInput[k], rot[k * 3 + 1].w, rot[k * 3].w, rot[k * 3 + 2].w));
                 }
                 else
                 {
-                    rotX.AddKey(keyframeInput[k], rot[k].x);
-                    rotY.AddKey(keyframeInput[k], rot[k].y);
-                    rotZ.AddKey(keyframeInput[k], -rot[k].z);
-                    rotW.AddKey(keyframeInput[k], -rot[k].w);
+                    keyframeArrayX[k] = new Keyframe(keyframeInput[k], rot[k].x);
+                    keyframeArrayY[k] = new Keyframe(keyframeInput[k], rot[k].y);
+                    keyframeArrayZ[k] = new Keyframe(keyframeInput[k], -rot[k].z);
+                    keyframeArrayW[k] = new Keyframe(keyframeInput[k], -rot[k].w);
                 }
             }
 
@@ -370,32 +408,41 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                 for (int k = 0; k < keyframeInput.Length; k++)
                 {
 
-                    SetTangentMode(rotX, k, mode);
-                    SetTangentMode(rotY, k, mode);
-                    SetTangentMode(rotZ, k, mode);
-                    SetTangentMode(rotW, k, mode);
+                    SetTangentMode(keyframeArrayX, k, mode);
+                    SetTangentMode(keyframeArrayY, k, mode);
+                    SetTangentMode(keyframeArrayZ, k, mode);
+                    SetTangentMode(keyframeArrayW, k, mode);
                 }
             }
 
-            Clip.SetCurve(relativePath, typeof(Transform), "localRotation.x", rotX);
-            Clip.SetCurve(relativePath, typeof(Transform), "localRotation.y", rotY);
-            Clip.SetCurve(relativePath, typeof(Transform), "localRotation.z", rotZ);
-            Clip.SetCurve(relativePath, typeof(Transform), "localRotation.w", rotW);
+            AnimationCurve animationCurveX, animationCurveY, animationCurveZ, animationCurveW;
+
+            animationCurveX = new AnimationCurve(keyframeArrayX);
+            animationCurveY = new AnimationCurve(keyframeArrayY);
+            animationCurveZ = new AnimationCurve(keyframeArrayZ);
+            animationCurveW = new AnimationCurve(keyframeArrayW);
+
+            Clip.SetCurve(relativePath, typeof(Transform), "localRotation.x", animationCurveX);
+            Clip.SetCurve(relativePath, typeof(Transform), "localRotation.y", animationCurveY);
+            Clip.SetCurve(relativePath, typeof(Transform), "localRotation.z", animationCurveZ);
+            Clip.SetCurve(relativePath, typeof(Transform), "localRotation.w", animationCurveW);
         }
+
+        // ---------------------------------------------------------------------------
 
         static void SetScaleCurve(AnimationClip Clip, Vector3[] scale, float[] keyframeInput, string mode, string relativePath)
         {
-            AnimationCurve scaleX, scaleY, scaleZ;
+            Keyframe[] keyframeArrayX, keyframeArrayXY, keyframeArrayXZ;
 
-            scaleX = new AnimationCurve();
-            scaleY = new AnimationCurve();
-            scaleZ = new AnimationCurve();
+            keyframeArrayX = new Keyframe[keyframeInput.Length];
+            keyframeArrayXY = new Keyframe[keyframeInput.Length];
+            keyframeArrayXZ = new Keyframe[keyframeInput.Length];
 
             for (int k = 0; k < keyframeInput.Length; k++)
             {
-                scaleX.AddKey(keyframeInput[k], scale[k].x);
-                scaleY.AddKey(keyframeInput[k], scale[k].y);
-                scaleZ.AddKey(keyframeInput[k], scale[k].z);
+                keyframeArrayX[k] = new Keyframe(keyframeInput[k], scale[k].x);
+                keyframeArrayXY[k] = new Keyframe(keyframeInput[k], scale[k].y);
+                keyframeArrayXZ[k] = new Keyframe(keyframeInput[k], scale[k].z);
             }
 
             if (mode != "CUBICSPLINE")
@@ -403,62 +450,63 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                 for (int k = 0; k < keyframeInput.Length; k++)
                 {
 
-                    SetTangentMode(scaleX, k, mode);
-                    SetTangentMode(scaleY, k, mode);
-                    SetTangentMode(scaleZ, k, mode);
+                    SetTangentMode(keyframeArrayX, k, mode);
+                    SetTangentMode(keyframeArrayXY, k, mode);
+                    SetTangentMode(keyframeArrayXZ, k, mode);
                 }
             }
-            Clip.SetCurve(relativePath, typeof(Transform), "localScale.x", scaleX);
-            Clip.SetCurve(relativePath, typeof(Transform), "localScale.y", scaleY);
-            Clip.SetCurve(relativePath, typeof(Transform), "localScale.z", scaleZ);
+
+            AnimationCurve animationCurveX, animationCurveY, animationCurveZ;
+
+            animationCurveX = new AnimationCurve(keyframeArrayX);
+            animationCurveY = new AnimationCurve(keyframeArrayXY);
+            animationCurveZ = new AnimationCurve(keyframeArrayXZ);
+
+            Clip.SetCurve(relativePath, typeof(Transform), "localScale.x", animationCurveX);
+            Clip.SetCurve(relativePath, typeof(Transform), "localScale.y", animationCurveY);
+            Clip.SetCurve(relativePath, typeof(Transform), "localScale.z", animationCurveZ);
         }
+
+        // ---------------------------------------------------------------------------
 
         static void SetWeightsCurve(AnimationClip Clip, float[] weights, float[] keyframeInput, string mode, string relativePath)
         {
-            List<AnimationCurve> curveList = new List<AnimationCurve>();
+            int curveNum;
 
-            int curveNum = weights.Length / keyframeInput.Length;
+            curveNum = weights.Length / keyframeInput.Length;
 
-            if (curveNum == 1)
+            for (int i = 0; i < curveNum; i++)
             {
-                curveList.Add(new AnimationCurve());
+                Keyframe[] keyframeArray;
+
+                keyframeArray = new Keyframe[keyframeInput.Length];
+
                 for (int k = 0; k < keyframeInput.Length; k++)
                 {
-                    curveList[0].AddKey(keyframeInput[k], weights[k] * 100f);
+                    int weightIndex;
+
+                    weightIndex = curveNum == 1 ? k : k * 2 + i;
+
+                    keyframeArray[k] = new Keyframe(keyframeInput[k], weights[weightIndex] * 100f);
                 }
 
                 if (mode != "CUBICSPLINE")
                 {
                     for (int k = 0; k < keyframeInput.Length; k++)
                     {
-                        SetTangentMode(curveList[0], k, mode);
+                        SetTangentMode(keyframeArray, k, mode);
                     }
                 }
 
-                Clip.SetCurve(relativePath, typeof(SkinnedMeshRenderer), "blendShape." + "BlendShape" + 0, curveList[0]);
-            }
-            else
-            {
-                for (int i = 0; i < curveNum; i++)
-                {
-                    curveList.Add(new AnimationCurve());
-                    for (int k = 0; k < keyframeInput.Length; k++)
-                    {
-                        curveList[i].AddKey(keyframeInput[k], weights[k * 2 + i] * 100f);
-                    }
+                AnimationCurve animationCurve;
 
-                    if (mode != "CUBICSPLINE")
-                    {
-                        for (int k = 0; k < keyframeInput.Length; k++)
-                        {
-                            SetTangentMode(curveList[i], k, mode);
-                        }
-                    }
+                animationCurve = new AnimationCurve(keyframeArray);
 
-                    Clip.SetCurve(relativePath, typeof(SkinnedMeshRenderer), "blendShape." + "BlendShape" + i, curveList[i]);
-                }
+                Clip.SetCurve(relativePath, typeof(SkinnedMeshRenderer), "blendShape." + "BlendShape" + i, animationCurve);
             }
         }
+
+        // ---------------------------------------------------------------------------
 
         private static void FlipXZ(Vector3[] positions)
         {
@@ -530,6 +578,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return Clip;
         }
 
+        // ---------------------------------------------------------------------------
+
         private static async Task ConstructMaterialAsync(this GltfObject gltfObject, GltfMaterial gltfMaterial, int materialId)
         {
             if (gltfObject.UseBackgroundThread) await Update;
@@ -552,6 +602,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             if (gltfObject.UseBackgroundThread) await BackgroundThread;
         }
+
+        // ---------------------------------------------------------------------------
 
         private static async Task<Material> CreateBIMServerCenterShaderMaterial(GltfObject gltfObject, GltfMaterial gltfMaterial, int materialId)
         {
@@ -589,14 +641,14 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
             else if (gltfMaterial.alphaMode == "BLEND")
             {
-                material.SetInt(SrcBlendId, (int)BlendMode.One);
+                material.SetInt(SrcBlendId, (int)BlendMode.SrcAlpha);
                 material.SetInt(DstBlendId, (int)BlendMode.OneMinusSrcAlpha);
                 material.SetInt(ZWriteId, 0);
-                material.SetInt(ModeId, 3);
-                material.SetOverrideTag("RenderType", "Transparency");
+                material.SetInt(ModeId, 2);
+                material.SetOverrideTag("RenderType", "Fade");
                 material.DisableKeyword("_ALPHATEST_ON");
-                material.DisableKeyword("_ALPHABLEND_ON");
-                material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+                material.EnableKeyword("_ALPHABLEND_ON");
+                material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
                 material.renderQueue = 3000;
             }
 
@@ -681,6 +733,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             return material;
         }
+
+        // ---------------------------------------------------------------------------
 
         private static async Task<Material> CreateStandardShaderMaterial(GltfObject gltfObject, GltfMaterial gltfMaterial, int materialId)
         {
@@ -780,6 +834,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return material;
         }
 
+        // ---------------------------------------------------------------------------
+
         private static void ConstructSceneAccessorData(this GltfObject gltfObject, GltfScene gltfScene)
         {
             for (int i = 0; i < gltfScene.nodes.Length; i++)
@@ -790,63 +846,123 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
         }
 
-        private static async Task ConstructSceneAsync(this GltfObject gltfObject, GltfScene gltfScene, GameObject root)
+        // ---------------------------------------------------------------------------
+
+        private static async Task ConstructSceneAsync(
+                        this GltfObject gltfObject,
+                        GltfScene gltfScene,
+                        GameObject root,
+                        bool generateColliders,
+                        CancellationToken cancellationToken,
+                        FuncProgressPercUpdate funcProgressPercUpdate)
         {
-            await ConstructSceneRoutine(gltfObject, gltfScene, root);
+            await ConstructSceneRoutine(gltfObject, gltfScene, root, generateColliders, cancellationToken, funcProgressPercUpdate);
         }
 
-        private static void InvokeActions(List<UnityAction> createMeshActions, int start, int end)
-        {
-            for (int i = start; i < end; i++)
-            {
-                createMeshActions[i].Invoke();
-            }
-        }
+        // ---------------------------------------------------------------------------
 
-        private static IEnumerator CycleThroughActionArray(List<UnityAction> createMeshActions, int meshesPerFrame)
+        private static IEnumerator CycleThroughActionArray(
+                        List<Action> createActions,
+                        int actionsPerFrame,
+                        CancellationToken cancellationToken,
+                        FuncProgressIndexesUpdate funcProgressIndexesUpdate)
         {
-            for (int i = 0; i < createMeshActions.Count; i = i + meshesPerFrame)
+            for (int i = 0; i < createActions.Count; i = i + actionsPerFrame)
             {
-                int max = Mathf.Clamp(i + meshesPerFrame, 0, createMeshActions.Count);
+                int max;
 
-                InvokeActions(createMeshActions, i, max);
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                max = Mathf.Clamp(i + actionsPerFrame, 0, createActions.Count);
+
+                for (int j = i; j < max; j++)
+                {
+                    createActions[j].Invoke();
+                }
+
+                funcProgressIndexesUpdate?.Invoke(max - i, max);
 
                 yield return 0;
             }
         }
 
-        private static async Task ConstructSceneRoutine(GltfObject gltfObject, GltfScene gltfScene, GameObject root)
-        {
-            List<UnityAction> createGameobjectActions, createMeshActions, createAnimationActions, createExtraActions;
-            int actionsPerFrame;
+        // ---------------------------------------------------------------------------
 
-            createGameobjectActions = new List<UnityAction>();
-            createMeshActions = new List<UnityAction>();
-            createAnimationActions = new List<UnityAction>();
-            createExtraActions = new List<UnityAction>();
-            actionsPerFrame = 0;
+        private static async Task ConstrucSceneElements(
+                        List<Action> createGameobjectActions,
+                        List<Action> createMeshActions,
+                        List<Action> createAnimationActions,
+                        List<Action> createExtraActions,
+                        CancellationToken cancellationToken,
+                        FuncProgressPercUpdate funcProgressPercUpdate)
+        {
+            int numSteps;
+            int currentSteps;
+            int actionsPerFrame;
+            FuncProgressIndexesUpdate funcProgressIndexesUpdate;
+
+            numSteps = createGameobjectActions.Count + createMeshActions.Count + createAnimationActions.Count + createExtraActions.Count;
+            currentSteps = 0;
+
+            funcProgressIndexesUpdate = (actualIndex, total) =>
+            {
+                currentSteps += actualIndex;
+                funcProgressPercUpdate?.Invoke((float)currentSteps / (float)numSteps);
+            };
+
+            funcProgressPercUpdate?.Invoke(0f);
+
+            actionsPerFrame = 40;
+            await CycleThroughActionArray(createGameobjectActions, actionsPerFrame, cancellationToken, funcProgressIndexesUpdate);
+
+            actionsPerFrame = 20;
+            await CycleThroughActionArray(createMeshActions, actionsPerFrame, cancellationToken, funcProgressIndexesUpdate);
+
+            actionsPerFrame = 60;
+            await CycleThroughActionArray(createAnimationActions, actionsPerFrame, cancellationToken, funcProgressIndexesUpdate);
+
+            actionsPerFrame = 40;
+            await CycleThroughActionArray(createExtraActions, actionsPerFrame, cancellationToken, funcProgressIndexesUpdate);
+
+            funcProgressPercUpdate?.Invoke(1f);
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private static async Task ConstructSceneRoutine(
+                        GltfObject gltfObject,
+                        GltfScene gltfScene,
+                        GameObject root,
+                        bool generateColliders,
+                        CancellationToken cancellationToken,
+                        FuncProgressPercUpdate funcProgressPercUpdate)
+        {
+            List<Action> createGameobjectActions, createMeshActions, createAnimationActions, createExtraActions;
+
+            createGameobjectActions = new List<Action>();
+            createMeshActions = new List<Action>();
+            createAnimationActions = new List<Action>();
+            createExtraActions = new List<Action>();
 
             GltfNode obj = new GltfNode();
             obj.GameObjectReference = root;
 
             for (int i = 0; i < gltfScene.nodes.Length; i++)
             {
-
-                ConstructNode(gltfObject, gltfObject.nodes[gltfScene.nodes[i]], gltfScene.nodes[i], obj, createGameobjectActions, createMeshActions, createAnimationActions, createExtraActions);
+                ConstructNode(gltfObject, gltfObject.nodes[gltfScene.nodes[i]], gltfScene.nodes[i], obj, generateColliders, createGameobjectActions, createMeshActions, createAnimationActions, createExtraActions);
             }
 
-            actionsPerFrame = 40;
-            await CycleThroughActionArray(createGameobjectActions, actionsPerFrame);
-
-            actionsPerFrame = 20;
-            await CycleThroughActionArray(createMeshActions, actionsPerFrame);
-
-            actionsPerFrame = 60;
-            await CycleThroughActionArray(createAnimationActions, actionsPerFrame);
-
-            actionsPerFrame = 40;
-            await CycleThroughActionArray(createExtraActions, actionsPerFrame);
+            await ConstrucSceneElements(
+                        createGameobjectActions,
+                        createMeshActions,
+                        createAnimationActions,
+                        createExtraActions,
+                        cancellationToken,
+                        funcProgressPercUpdate);
         }
+
+        // ---------------------------------------------------------------------------
 
         private static void ConstructNodeAccessorData(GltfObject gltfObject, GltfNode node, int nodeId)
         {
@@ -863,6 +979,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                 }
             }
         }
+
+        // ---------------------------------------------------------------------------
 
         private static void ConstructExtra(GltfObject gltfObject, GltfNode node)
         {
@@ -938,6 +1056,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
         }
 
+        // ---------------------------------------------------------------------------
+
         private static void ConstructAnimation(GltfObject gltfObject, GltfNode node, int animationIndex)
         {
             Animation animationComponent;
@@ -952,6 +1072,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             gltfObject.RegisteredAnimations.Add(animationComponent);
         }
+
+        // ---------------------------------------------------------------------------
 
         private static void ConstructGameObject(GltfNode node, int nodeId, Transform parent)
         {
@@ -984,17 +1106,19 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             nodeGameObject.transform.localScale = scale;
         }
 
-        private static void ConstructNode(GltfObject gltfObject, GltfNode node, int nodeId, GltfNode parentNode,
-                                          List<UnityAction> constructGameobject,
-                                          List<UnityAction> constructMesh,
-                                          List<UnityAction> constructAnimation,
-                                          List<UnityAction> costructExtras)
+        // ---------------------------------------------------------------------------
+
+        private static void ConstructNode(GltfObject gltfObject, GltfNode node, int nodeId, GltfNode parentNode, bool generateColliders,
+                                          List<Action> constructGameobject,
+                                          List<Action> constructMesh,
+                                          List<Action> constructAnimation,
+                                          List<Action> costructExtras)
         {
             constructGameobject.Add(() => ConstructGameObject(node, nodeId, parentNode.GameObjectReference.transform));
 
             if (node.mesh >= 0)
             {
-                constructMesh.Add(() => ConstructMesh(gltfObject, node.GameObjectReference, node.mesh));
+                constructMesh.Add(async () => await ConstructMesh(gltfObject, node.GameObjectReference, node.mesh, generateColliders));
 
                 for (int i = 0; i < gltfObject.animations?.Length; i++)
                 {
@@ -1016,10 +1140,12 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             {
                 for (int i = 0; i < node.children.Length; i++)
                 {
-                    ConstructNode(gltfObject, gltfObject.nodes[node.children[i]], node.children[i], node, constructGameobject, constructMesh, constructAnimation, costructExtras);
+                    ConstructNode(gltfObject, gltfObject.nodes[node.children[i]], node.children[i], node, generateColliders, constructGameobject, constructMesh, constructAnimation, costructExtras);
                 }
             }
         }
+
+        // ---------------------------------------------------------------------------
 
         private static List<Mesh> GetSameMaterialMeshes(List<Mesh> meshPrimitives, GltfObject gltfObject, GltfMesh gltfMesh, Material material)
         {
@@ -1035,6 +1161,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             return returnList;
         }
+
+        // ---------------------------------------------------------------------------
 
         private static Mesh CombineMeshList(List<Mesh> toMerge, Transform parent, bool mergeSubMeshes, Material material = null, List<Material> materialList = null)
         {
@@ -1099,6 +1227,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return null;
         }
 
+        // ---------------------------------------------------------------------------
+
         static void SetBlendShapeWeights(SkinnedMeshRenderer smr, GltfMesh mesh)
         {
             if (mesh.weights == null || mesh.weights.Length == 0)
@@ -1118,6 +1248,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
         }
 
+        // ---------------------------------------------------------------------------
+
         private static void ConstructMeshAccessorData(GltfObject gltfObject, int meshId)
         {
             GltfMesh gltfMesh;
@@ -1136,7 +1268,11 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
         }
 
-        private static void ConstructMesh(GltfObject gltfObject, GameObject parent, int meshId)
+#if UNITY_2018
+#pragma warning disable CS1998 // El método asincrónico carece de operadores "await" y se ejecutará｡ de forma sincrónica
+#endif
+
+        private static async Task ConstructMesh(GltfObject gltfObject, GameObject parent, int meshId, bool generateColliders)
         {
             GltfMesh gltfMesh;
             int numElements;
@@ -1234,17 +1370,40 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
                     meshFilter = parent.AddComponent<MeshFilter>();
                     meshFilter.sharedMesh = gltfMesh.Mesh;
 
-                    Collider objectCollider;
+                    if (generateColliders == true)
+                    {
+                        Collider objectCollider;
 
-                    if (gltfMesh.Mesh.GetTopology(0) == MeshTopology.Triangles)
-                        objectCollider = parent.AddComponent<MeshCollider>();
-                    else
-                        objectCollider = parent.AddComponent<BoxCollider>();
+                        if (gltfMesh.Mesh.GetTopology(0) == MeshTopology.Triangles)
+                        {
+                            int meshID;
 
-                    gltfObject.RegisteredColliders.Add(objectCollider);
+                            meshID = gltfMesh.Mesh.GetInstanceID();
+
+#if UNITY_2019_3_OR_NEWER
+                            await new WaitForBackgroundThread();
+
+                            Physics.BakeMesh(meshID, false);
+
+                            await new WaitForUpdate();
+#endif
+
+                            objectCollider = parent.AddComponent<MeshCollider>();
+                        }
+                        else
+                        {
+                            objectCollider = parent.AddComponent<BoxCollider>();
+                        }
+
+                        gltfObject.RegisteredColliders.Add(objectCollider);
+                    }
                 }
             }
         }
+
+#if UNITY_2018
+#pragma warning restore CS1998 // El método asincrónico carece de operadores "await" y se ejecutará｡ de forma sincrónica
+#endif
 
         public static int[] StripToIndex(int[] mainIndex, bool flip)
         {
@@ -1274,6 +1433,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
             return index;
         }
+
+        // ---------------------------------------------------------------------------
 
         private static void ConstructMeshPrimitiveAccessorData(GltfObject gltfObject, GltfMeshPrimitive meshPrimitive)
         {
@@ -1499,6 +1660,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             meshPrimitive.AccessorData = gltfAccessorData;
         }
 
+        // ---------------------------------------------------------------------------
+
         private static Mesh ConstructMeshPrimitiveAsync(GltfObject gltfObject, GltfMeshPrimitive meshPrimitive)
         {
             var mesh = new Mesh
@@ -1591,6 +1754,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             return mesh;
         }
 
+        // ---------------------------------------------------------------------------
+
         private static BoneWeight[] CreateBoneWeightArray(Vector4[] joints, Vector4[] weights, int vertexCount)
         {
             NormalizeBoneWeightArray(weights);
@@ -1612,6 +1777,8 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 
             return boneWeights;
         }
+
+        // ---------------------------------------------------------------------------
 
         private static void NormalizeBoneWeightArray(Vector4[] weights)
         {

@@ -42,9 +42,9 @@ namespace BIMservercenter.Toolkit.Internal.Utilities
         { if (objectToAssert.Equals(value) == true) ThrowException("Object shouldn't be equal to value", stopEditor); }
 
         public static void AssertSmaller(int objectToAssert, int value, bool stopEditor = true)
-        { if (objectToAssert > value) ThrowException("Object should be smaller than the value", stopEditor); }
+        { if (objectToAssert >= value) ThrowException("Object should be smaller than the value", stopEditor); }
 
         public static void AssertGreater(int objectToAssert, int value, bool stopEditor = true)
-        { if (objectToAssert < value) ThrowException("Object should be greater than the value", stopEditor); }
+        { if (objectToAssert <= value) ThrowException("Object should be greater than the value", stopEditor); }
     }
 }

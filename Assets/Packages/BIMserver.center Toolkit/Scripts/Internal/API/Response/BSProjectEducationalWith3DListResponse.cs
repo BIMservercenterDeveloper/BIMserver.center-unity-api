@@ -16,10 +16,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using BIMservercenter.Toolkit.Internal.API.Model;
 using BIMservercenter.Toolkit.Internal.API.Response.Schema;
-using BIMservercenter.Toolkit.Internal.API.Session;
 using BIMservercenter.Toolkit.Internal.API.Utilities;
+using BIMservercenter.Toolkit.Internal.API.Session;
+using BIMservercenter.Toolkit.Internal.API.Model;
 using System.Collections.Generic;
 using System.Xml;
 

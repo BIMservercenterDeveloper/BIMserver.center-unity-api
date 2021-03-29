@@ -17,8 +17,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using BIMservercenter.Toolkit.Internal.API.Response.Schema;
-using BIMservercenter.Toolkit.Internal.API.Session;
 using BIMservercenter.Toolkit.Internal.API.Utilities;
+using BIMservercenter.Toolkit.Internal.API.Session;
 using System.Xml;
 
 namespace BIMservercenter.Toolkit.Internal.API.Response

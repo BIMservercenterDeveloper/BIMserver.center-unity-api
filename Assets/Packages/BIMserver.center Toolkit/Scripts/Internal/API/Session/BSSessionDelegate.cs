@@ -29,6 +29,12 @@ namespace BIMservercenter.Toolkit.Internal.API.Session
         public delegate void FinishLogoutRequest();
         public FinishLogoutRequest funcFinishLogoutRequest = null;
 
+        public delegate void FinishRegisterRequest();
+        public FinishRegisterRequest funcFinishRegisterRequest = null;
+
+        public delegate void FinishForgotPasswordRequest();
+        public FinishForgotPasswordRequest funcFinishForgotPasswordRequest = null;
+
         public delegate void FinishProjectListRequest(List<BSMProject> projectList);
         public FinishProjectListRequest funcFinishProjectListRequest = null;
 

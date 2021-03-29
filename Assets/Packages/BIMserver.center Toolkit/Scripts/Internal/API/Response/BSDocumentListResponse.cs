@@ -16,10 +16,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using BIMservercenter.Toolkit.Internal.API.Model;
 using BIMservercenter.Toolkit.Internal.API.Response.Schema;
-using BIMservercenter.Toolkit.Internal.API.Session;
 using BIMservercenter.Toolkit.Internal.API.Utilities;
+using BIMservercenter.Toolkit.Internal.API.Session;
+using BIMservercenter.Toolkit.Internal.API.Model;
 using System.Collections.Generic;
 using System.Xml;
 
@@ -58,6 +58,8 @@ namespace BIMservercenter.Toolkit.Internal.API.Response
                     document.version = item.version;
                     document.url = item.url_file;
                     document.img = item.img_file;
+                    document.isCreatedInitialProgram = item.is_created_initial_program;
+
                     document.associatedDocumentsVisiblesList = new List<BSMAssociatedDocument>();
 
                     foreach (var aDocument in item.list)

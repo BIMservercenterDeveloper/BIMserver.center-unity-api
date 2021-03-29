@@ -18,21 +18,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using BIMservercenter.Toolkit.Internal.Gltf.AsyncAwaitUtil;
 using BIMservercenter.Toolkit.Internal.Utilities;
+using BIMservercenter.Toolkit.Public.Utilities;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
+using System.Threading;
+using System.IO;
 
 namespace BIMservercenter.Toolkit.Public.Model
 {
     [System.Serializable]
     public partial class BSDocument
     {
-        public bool IsIFCFile { get { return nameDocument.EndsWith(".ifc"); } }
+        public bool IsIFCFile;
         public string bimServerId;
         public string imgUrl;
         public string nameDocument;
         public string dateLastChange;
         public string urlDownloadDocument;
+        public string isCreatedInitialProgram;
         public List<BSAssociatedDocument> associatedDocuments;
 
         // ---------------------------------------------------------------------------
@@ -50,7 +53,7 @@ namespace BIMservercenter.Toolkit.Public.Model
         {
             return Path.Combine(projectPath, nameDocument);
         }
-        
+
         // ---------------------------------------------------------------------------
         // Equals
         // ---------------------------------------------------------------------------
@@ -64,22 +67,37 @@ namespace BIMservercenter.Toolkit.Public.Model
         // Gltf
         // ---------------------------------------------------------------------------
 
-        private async Task<List<BSGltf>> PLoadGltfsAsync(string projectPath, bool hide)
+        private async Task<List<BSGltf>> PLoadGltfsAsync(
+                        string projectPath,
+                        bool generateColliders,
+                        bool hide,
+                        FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdate,
+                        CancellationTokenSource cancellationTokenSource)
         {
             List<BSGltf> gltfList;
 
             gltfList = new List<BSGltf>();
 
             {
+                int numAssociatedDocuments;
                 string documentPath;
 
+                numAssociatedDocuments = associatedDocuments.Count;
                 documentPath = DocumentPath(projectPath);
 
-                for (int i = 0; i < associatedDocuments.Count; i++)
+                funcProgressPercIndexesUpdate?.Invoke(0, numAssociatedDocuments, 0f);
+
+                for (int i = 0; i < numAssociatedDocuments; i++)
                 {
                     BSAssociatedDocument bSAssociatedDocument;
+                    FuncProgressPercUpdate funcProgressPercUpdateLocal;
 
                     bSAssociatedDocument = associatedDocuments[i];
+
+                    funcProgressPercUpdateLocal = (percentage) =>
+                    {
+                        funcProgressPercIndexesUpdate?.Invoke(i, numAssociatedDocuments, (i + percentage) / numAssociatedDocuments);
+                    };
 
                     if (bSAssociatedDocument.IsGltfFile == true)
                     {
@@ -87,11 +105,13 @@ namespace BIMservercenter.Toolkit.Public.Model
                         {
                             BSGltf gltf;
 
-                            gltf = await bSAssociatedDocument.LoadGltfAsync(documentPath, hide);
+                            gltf = await bSAssociatedDocument.LoadGltfAsync(documentPath, generateColliders, hide, funcProgressPercUpdateLocal, cancellationTokenSource);
                             gltfList.Add(gltf);
                         }
                     }
                 }
+
+                funcProgressPercIndexesUpdate?.Invoke(numAssociatedDocuments, numAssociatedDocuments, 1f);
             }
 
             return gltfList;
@@ -144,7 +164,10 @@ namespace BIMservercenter.Toolkit.Public.Model
 
         // ---------------------------------------------------------------------------
 
-        private async Task<bool> PSaveOnDiskAsync(string projectPath)
+        private async Task PSaveOnDiskAsync(
+                        string projectPath, 
+                        FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdate, 
+                        CancellationTokenSource cancellationTokenSource)
         {
             string documentPath;
             string documentFilePath;
@@ -157,24 +180,34 @@ namespace BIMservercenter.Toolkit.Public.Model
                 if (Directory.Exists(projectPath) == false)
                     Directory.CreateDirectory(projectPath);
 
-                if (await BIMServerCenterUtilities.DownloadAsync(urlDownloadDocument, documentFilePath) == false)
-                    return false;
+                await BIMServerCenterUtilities.DownloadAsync(urlDownloadDocument, documentFilePath, null, cancellationTokenSource);
             }
 
             if (HasAssociatedDocuments() == true)
             {
-                for (int i = 0; i < associatedDocuments.Count; i++)
+                int numAssociatedDocuments;
+
+                numAssociatedDocuments = associatedDocuments.Count;
+
+                funcProgressPercIndexesUpdate?.Invoke(0, numAssociatedDocuments, 0f);
+
+                for (int i = 0; i < numAssociatedDocuments; i++)
                 {
                     BSAssociatedDocument bSAssociatedDocument;
+                    FuncProgressPercUpdate funcProgressPercUpdate;
 
                     bSAssociatedDocument = associatedDocuments[i];
 
-                    if (await bSAssociatedDocument.SaveOnDiskAsync(documentPath) == false)
-                        return false;
-                }
-            }
+                    funcProgressPercUpdate = (percentage) =>
+                    {
+                        funcProgressPercIndexesUpdate?.Invoke(i, numAssociatedDocuments, (i + percentage) / numAssociatedDocuments);
+                    };
 
-            return true;
+                    await bSAssociatedDocument.SaveOnDiskAsync(documentPath, funcProgressPercUpdate, cancellationTokenSource);
+                }
+
+                funcProgressPercIndexesUpdate?.Invoke(numAssociatedDocuments, numAssociatedDocuments, 1f);
+            }
         }
     }
 }

@@ -18,13 +18,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using BIMservercenter.Toolkit.Internal.Gltf.AsyncAwaitUtil;
 using BIMservercenter.Toolkit.Internal.Gltf.Schema;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
+using BIMservercenter.Toolkit.Public.Utilities;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
+using System.Text;
 using UnityEngine;
+using System.IO;
+using System;
 
 namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
 {
@@ -45,122 +47,50 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
         /// Must be called from the main thread.
         /// If the <see href="https://docs.unity3d.com/ScriptReference/Application-isPlaying.html">Application.isPlaying</see> is false, then this method will run synchronously.
         /// </remarks>
-        public static async Task<GltfObject> ImportGltfObjectFromPathAsync(string uri)
+        /// <exception cref="BSExceptionCancellationRequested">Thrown when cancellation had requested</exception>
+        /// <exception cref="BSExceptionFailedToReadGLTF">Thrown when fail to read GLTF</exception>
+        public static async Task<GltfObject> ImportGltfObjectFromPathAsync(string uri, bool generateColliders, CancellationToken cancellationToken, FuncProgressPercUpdate funcProgressPercUpdate)
         {
-            if (string.IsNullOrWhiteSpace(uri))
-            {
-                Debug.LogError("Uri is not valid.");
-                return null;
-            }
-
             GltfObject gltfObject;
             bool useBackgroundThread = Application.isPlaying;
 
+            if (string.IsNullOrWhiteSpace(uri) || uri.EndsWith(".gltf") == false)
+                throw new BSExceptionFailedToReadGLTF();
+
             if (useBackgroundThread) { await BackgroundThread; }
 
-            if (uri.EndsWith(".gltf"))
             {
                 string gltfJson;
-                using (StreamReader streamReader = new StreamReader(uri, Encoding.UTF8))
+
+                using (FileStream stream = new FileStream(uri, FileMode.Open))
+                using (StreamReader streamReader = new StreamReader(stream))
+                using (StringWriter writter = new StringWriter())
                 {
-                    gltfJson = await streamReader.ReadToEndAsync();
-                }
-
-                gltfObject = await GetGltfObjectFromJson(gltfJson);
-
-                if (gltfObject == null)
-                {
-                    Debug.LogError("Failed load Gltf Object from json schema.");
-                    return null;
-                }
-            }
-            else if (uri.EndsWith(".glb"))
-            {
-                byte[] glbData;
-
-#if WINDOWS_UWP
-
-                if (useBackgroundThread)
-                {
-                    try
+                    while (streamReader.EndOfStream == false)
                     {
-                        var storageFile = await Windows.Storage.StorageFile.GetFileFromPathAsync(uri);
-
-                        if (storageFile == null)
-                        {
-                            Debug.LogError($"Failed to locate .glb file at {uri}");
-                            return null;
-                        }
-
-                        var buffer = await Windows.Storage.FileIO.ReadBufferAsync(storageFile);
-
-                        using (Windows.Storage.Streams.DataReader dataReader = Windows.Storage.Streams.DataReader.FromBuffer(buffer))
-                        {
-                            glbData = new byte[buffer.Length];
-                            dataReader.ReadBytes(glbData);
-                        }
+                        writter.WriteLine(streamReader.ReadLine());
                     }
-                    catch (Exception e)
-                    {
-                        Debug.LogError(e.Message);
-                        return null;
-                    }
-                }
-                else
-                {
-                    glbData = UnityEngine.Windows.File.ReadAllBytes(uri);
-                }
-#else
-                using (FileStream stream = File.Open(uri, FileMode.Open))
-                {
-                    glbData = new byte[stream.Length];
 
-                    if (useBackgroundThread)
-                    {
-                        await stream.ReadAsync(glbData, 0, (int)stream.Length);
-                    }
-                    else
-                    {
-                        stream.Read(glbData, 0, (int)stream.Length);
-                    }
+                    gltfJson = writter.ToString();
                 }
-#endif
 
-                gltfObject = await GetGltfObjectFromGlb(glbData);
+                gltfObject = await GetGltfObjectFromJson(gltfJson, cancellationToken);
 
-                if (gltfObject == null)
-                {
-                    Debug.LogError("Failed to load GlTF Object from .glb!");
-                    return null;
-                }
-            }
-            else
-            {
-                Debug.LogError("Unsupported file name extension.");
-                return null;
+                if (gltfObject.asset.version.Contains("2.0") == false)
+                    throw new BSExceptionFailedToReadGLTF();
             }
 
             gltfObject.Uri = uri;
-            int nameStart = uri.Replace("\\", "/").LastIndexOf("/", StringComparison.Ordinal) + 1;
-            int nameLength = uri.Length - nameStart;
 
-            try
             {
+                int nameStart = uri.Replace("\\", "/").LastIndexOf("/", StringComparison.Ordinal) + 1;
+                int nameLength = uri.Length - nameStart;
+
                 gltfObject.Name = Path.GetFileNameWithoutExtension(uri.Substring(nameStart, nameLength));
-            }
-            catch (ArgumentException)
-            {
-                Debug.LogWarning("Uri contained invalid character");
-                gltfObject.Name = DefaultObjectName;
             }
 
             gltfObject.UseBackgroundThread = useBackgroundThread;
-            await gltfObject.ConstructAsync();
-
-            if (gltfObject.GameObjectReference == null)
-            {
-                Debug.LogError("Failed to construct Gltf Object.");
-            }
+            await gltfObject.ConstructAsync(generateColliders, cancellationToken, funcProgressPercUpdate);
 
             if (useBackgroundThread) { await Update; }
 
@@ -173,40 +103,36 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
         /// <param name="jsonString">String defining a glTF Object.</param>
         /// <returns><see cref="Schema.GltfObject"/></returns>
         /// <remarks>Returned <see cref="Schema.GltfObject"/> still needs to be initialized using <see cref="ConstructGltf.ConstructAsync"/>.</remarks>
-        public static async Task<GltfObject> GetGltfObjectFromJson(string jsonString)
+        /// <exception cref="BSExceptionFailedToReadGLTF">Thrown when a GLTF file can't be parsed</exception>
+        /// <exception cref="BSExceptionCancellationRequested">Thrown when cancellation is requested</exception>
+        public static async Task<GltfObject> GetGltfObjectFromJson(string jsonString, CancellationToken cancellationToken)
         {
             GltfObject gltfObject = null; ;
 
-            await Task.Run(() => { gltfObject = JsonUtility.FromJson<GltfObject>(jsonString); });
+            if (cancellationToken.IsCancellationRequested == true)
+                throw new BSExceptionCancellationRequested();
 
-            if (gltfObject.extensionsRequired?.Length > 0)
+            try
             {
-                Debug.LogError($"Required Extension Unsupported: {gltfObject.extensionsRequired[0]}");
-                return null;
+                await Task.Run(() => { gltfObject = JsonUtility.FromJson<GltfObject>(jsonString); }, cancellationToken);
             }
-
-            for (int i = 0; i < gltfObject.extensionsUsed?.Length; i++)
+            catch
             {
-                Debug.LogWarning($"Unsupported Extension: {gltfObject.extensionsUsed[i]}");
+                throw new BSExceptionFailedToReadGLTF();
             }
 
             List<string> meshPrimitiveAttributes = null;
 
-            await Task.Run(() => { meshPrimitiveAttributes = GetGltfMeshPrimitiveAttributes(jsonString); });
+            if (cancellationToken.IsCancellationRequested == true)
+                throw new BSExceptionCancellationRequested();
+
+            await Task.Run(() => { meshPrimitiveAttributes = GetGltfMeshPrimitiveAttributes(jsonString); }, cancellationToken);
 
             var meshPrimitiveTargets = GetGltfMeshPrimitiveTargets(jsonString);
             int numPrimitives = 0;
 
             for (var i = 0; i < gltfObject.meshes?.Length; i++)
-            {
                 numPrimitives += gltfObject.meshes[i]?.primitives?.Length ?? 0;
-            }
-
-            if (numPrimitives != meshPrimitiveAttributes.Count)
-            {
-                Debug.LogError("The number of mesh primitive attributes does not match the number of mesh primitives");
-                return null;
-            }
 
             int primitiveIndex = 0;
 
@@ -248,7 +174,7 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
         /// <param name="glbData">Raw glb byte data.</param>
         /// <returns><see cref="Schema.GltfObject"/></returns>
         /// <remarks>Returned <see cref="Schema.GltfObject"/> still needs to be initialized using <see cref="ConstructGltf.ConstructAsync"/>.</remarks>
-        public static async Task<GltfObject> GetGltfObjectFromGlb(byte[] glbData)
+        public static async Task<GltfObject> GetGltfObjectFromGlb(byte[] glbData, CancellationToken cancellationToken)
         {
             const int stride = sizeof(uint);
 
@@ -284,7 +210,7 @@ namespace BIMservercenter.Toolkit.Internal.Gltf.Serialization
             }
 
             var jsonChunk = Encoding.ASCII.GetString(glbData, stride * 5, chunk0Length);
-            var gltfObject = await GetGltfObjectFromJson(jsonChunk);
+            var gltfObject = await GetGltfObjectFromJson(jsonChunk, cancellationToken);
             var chunk1Length = (int)BitConverter.ToUInt32(glbData, stride * 5 + chunk0Length);
             var chunk1Type = BitConverter.ToUInt32(glbData, stride * 6 + chunk0Length);
 

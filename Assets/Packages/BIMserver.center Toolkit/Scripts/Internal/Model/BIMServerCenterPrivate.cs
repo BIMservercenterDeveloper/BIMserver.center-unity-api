@@ -16,9 +16,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using BIMservercenter.Toolkit.Internal.API.Model;
-using BIMservercenter.Toolkit.Internal.API.Session;
 using BIMservercenter.Toolkit.Internal.Gltf.AsyncAwaitUtil;
+using BIMservercenter.Toolkit.Internal.API.Session;
+using BIMservercenter.Toolkit.Internal.API.Model;
 using BIMservercenter.Toolkit.Internal.Utilities;
 using BIMservercenter.Toolkit.Public.Model;
 using System.Collections.Generic;
@@ -196,6 +196,48 @@ namespace BIMservercenter.Toolkit
 
         // ---------------------------------------------------------------------------
 
+        private static async Task<BSResponse> PRegisterAsync(BSLanguage bSLanguage, string email, string password, string name, string countryCode)
+        {
+            string languageCode;
+            BSResponse bSResponse;
+
+            languageCode = Application.systemLanguage.Get2LetterISOCode();
+            bSResponse = new BSResponse();
+            bSResponse.IsSucced = false;
+
+            Instance.bsDelegate.funcFinishRegisterRequest = () =>
+            {
+                bSResponse.IsSucced = true;
+            };
+
+            await Task.Run(() => Instance.bsSession.Register(bSLanguage, email, password, name, languageCode, countryCode, Instance.bsDelegate));
+            await Instance.CheckForErrorsAsync(bSResponse);
+
+            return bSResponse;
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private static async Task<BSResponse> PForgotPasswordAsync(BSLanguage bSLanguage, string email)
+        {
+            BSResponse bSResponse;
+
+            bSResponse = new BSResponse();
+            bSResponse.IsSucced = false;
+
+            Instance.bsDelegate.funcFinishForgotPasswordRequest = () =>
+            {
+                bSResponse.IsSucced = true;
+            };
+
+            await Task.Run(() => Instance.bsSession.ForgotPassword(bSLanguage, email, Instance.bsDelegate));
+            await Instance.CheckForErrorsAsync(bSResponse);
+
+            return bSResponse;
+        }
+
+        // ---------------------------------------------------------------------------
+
         private static async Task<BSResponseList<BSMProject>> PGetProjectListAsync(BSLanguage bSLanguage)
         {
             BSResponseList<BSMProject> bSResponseList;
@@ -323,6 +365,7 @@ namespace BIMservercenter.Toolkit
                 bSAssociatedDocument = new BSAssociatedDocument();
                 bSModelAssociatedDocument = associatedDocumentList[i];
 
+                bSAssociatedDocument.IsGltfFile = bSModelAssociatedDocument.name.EndsWith(".gltf");
                 bSAssociatedDocument.nameFile = bSModelAssociatedDocument.name;
                 bSAssociatedDocument.urlDownload = bSModelAssociatedDocument.url;
                 bSAssociatedDocument.dateLastChange = bSModelAssociatedDocument.dateTimedate;
@@ -356,11 +399,13 @@ namespace BIMservercenter.Toolkit
                     bSDocument = new BSDocument();
                     bSModelDocument = documentList[i];
 
+                    bSDocument.IsIFCFile = bSModelDocument.name.EndsWith(".ifc");
                     bSDocument.bimServerId = bSModelDocument.bimserverId;
                     bSDocument.imgUrl = bSModelDocument.img;
                     bSDocument.nameDocument = bSModelDocument.name;
                     bSDocument.dateLastChange = bSModelDocument.dateTimedate;
                     bSDocument.urlDownloadDocument = bSModelDocument.url;
+                    bSDocument.isCreatedInitialProgram = bSModelDocument.isCreatedInitialProgram;
 
                     PAppendBSAssociatedDocumentListAsync(bSModelDocument, bSDocument);
                     bSProject.documents.Add(bSDocument);

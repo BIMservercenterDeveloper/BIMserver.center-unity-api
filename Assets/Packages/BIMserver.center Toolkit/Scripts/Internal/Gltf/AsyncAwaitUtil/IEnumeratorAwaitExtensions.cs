@@ -17,16 +17,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using BIMservercenter.Toolkit.Internal.Gltf.AsyncAwaitUtil.Internal;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
-using System.Text;
+using System.Runtime.CompilerServices;
+using System.Collections.Generic;
+using System.Collections;
+using System.Reflection;
 using System.Threading;
+using System.Linq;
+using System.Text;
 using UnityEngine;
+using System;
 
 namespace BIMservercenter.Toolkit.Internal.Gltf.AsyncAwaitUtil
 {

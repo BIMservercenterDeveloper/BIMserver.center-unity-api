@@ -18,16 +18,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using BIMservercenter.Toolkit.Internal.Gltf.AsyncAwaitUtil;
 using BIMservercenter.Toolkit.Internal.Utilities;
-using System.IO;
+using BIMservercenter.Toolkit.Public.Utilities;
 using System.Threading.Tasks;
-using UnityEngine.Networking;
+using System.Threading;
+using System.IO;
 
 namespace BIMservercenter.Toolkit.Public.Model
 {
     [System.Serializable]
     public partial class BSAssociatedDocument
     {
-        public bool IsGltfFile { get { return nameFile.EndsWith(".gltf"); } }
+        public bool IsGltfFile;
         public string nameFile;
         public string urlDownload;
         public string dateLastChange;
@@ -45,17 +46,22 @@ namespace BIMservercenter.Toolkit.Public.Model
         // Gltf
         // ---------------------------------------------------------------------------
 
-        private async Task<BSGltf> PLoadGltfAsync(string documentPath, bool hide)
+        private async Task<BSGltf> PLoadGltfAsync(
+                        string documentPath, 
+                        bool generateColliders, 
+                        bool hide, 
+                        FuncProgressPercUpdate funcProgressPercUpdate, 
+                        CancellationTokenSource cancellationTokenSource)
         {
             BSGltf gltf;
             string associatedDocumentPath;
-            
+
             BIMServerCenterAssertion.AssertEquals(IsGltfFile, true);
             gltf = new BSGltf();
             associatedDocumentPath = AssociatedDocumentPath(documentPath);
 
             BIMServerCenterAssertion.AssertEquals(File.Exists(associatedDocumentPath), true);
-            await gltf.LoadGltfFromDiskAsync(associatedDocumentPath, hide);
+            await gltf.LoadGltfFromDiskAsync(associatedDocumentPath, generateColliders, hide, funcProgressPercUpdate, cancellationTokenSource);
 
             return gltf;
         }
@@ -74,7 +80,10 @@ namespace BIMservercenter.Toolkit.Public.Model
 
         // ---------------------------------------------------------------------------
 
-        private async Task<bool> PSaveOnDiskAsync(string documentPath)
+        private async Task PSaveOnDiskAsync(
+                        string documentPath,
+                        FuncProgressPercUpdate funcProgressPercUpdate,
+                        CancellationTokenSource cancellationTokenSource)
         {
             string associatedDocumentPath;
 
@@ -82,7 +91,8 @@ namespace BIMservercenter.Toolkit.Public.Model
                 Directory.CreateDirectory(documentPath);
 
             associatedDocumentPath = AssociatedDocumentPath(documentPath);
-            return await BIMServerCenterUtilities.DownloadAsync(urlDownload, associatedDocumentPath);
+
+            await BIMServerCenterUtilities.DownloadAsync(urlDownload, associatedDocumentPath, funcProgressPercUpdate, cancellationTokenSource);
         }
     }
 }

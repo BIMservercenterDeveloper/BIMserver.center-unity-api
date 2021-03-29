@@ -16,12 +16,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using System;
-using System.IO;
+using Object = UnityEngine.Object;
+using UnityEngine.Rendering;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
-using Object = UnityEngine.Object;
+using System.IO;
+using System;
 
 namespace BIMservercenter.Toolkit.Internal.Shaders
 {
@@ -61,6 +61,10 @@ namespace BIMservercenter.Toolkit.Internal.Shaders
             public static GUIContent normalMapScale = new GUIContent("Scale", "Scales the Normal Map Normal");
             public static GUIContent enableEmission = new GUIContent("Emission", "Enable Emission");
             public static GUIContent emissiveColor = new GUIContent("Color");
+            public static GUIContent blendedClippingWidth = new GUIContent("Blended Clipping Width", "The Width of the Clipping Primitive Clip Fade Region on Non-Cutout Materials");
+            public static GUIContent clippingBorder = new GUIContent("Clipping Border", "Enable a Border Along the Clipping Primitive's Edge");
+            public static GUIContent clippingBorderWidth = new GUIContent("Width", "Width of the Clipping Border");
+            public static GUIContent clippingBorderColor = new GUIContent("Color", "Interpolated Color of the Clipping Border");
             public static GUIContent hoverLight = new GUIContent("Hover Light", "Enable utilization of Hover Light(s)");
             public static GUIContent enableHoverColorOverride = new GUIContent("Override Color", "Override Global Hover Light Color for this Material");
             public static GUIContent hoverColorOverride = new GUIContent("Color", "Override Hover Light Color");
@@ -93,6 +97,10 @@ namespace BIMservercenter.Toolkit.Internal.Shaders
         protected MaterialProperty emissiveColor;
         protected MaterialProperty metallic;
         protected MaterialProperty smoothness;
+        protected MaterialProperty blendedClippingWidth;
+        protected MaterialProperty clippingBorder;
+        protected MaterialProperty clippingBorderWidth;
+        protected MaterialProperty clippingBorderColor;
         protected MaterialProperty hoverLight;
         protected MaterialProperty enableHoverColorOverride;
         protected MaterialProperty hoverColorOverride;
@@ -128,6 +136,10 @@ namespace BIMservercenter.Toolkit.Internal.Shaders
             normalMapScale = FindProperty("_NormalMapScale", props);
             enableEmission = FindProperty("_EnableEmission", props);
             emissiveColor = FindProperty("_EmissiveColor", props);
+            blendedClippingWidth = FindProperty("_BlendedClippingWidth", props);
+            clippingBorder = FindProperty("_ClippingBorder", props);
+            clippingBorderWidth = FindProperty("_ClippingBorderWidth", props);
+            clippingBorderColor = FindProperty("_ClippingBorderColor", props);
             hoverLight = FindProperty("_HoverLight", props);
             enableHoverColorOverride = FindProperty("_EnableHoverColorOverride", props);
             hoverColorOverride = FindProperty("_HoverColorOverride", props);
@@ -295,6 +307,15 @@ namespace BIMservercenter.Toolkit.Internal.Shaders
         {
             EditorGUILayout.Space();
             GUILayout.Label(Styles.renderingOptionsTitle, EditorStyles.boldLabel);
+
+            materialEditor.ShaderProperty(clippingBorder, Styles.clippingBorder);
+
+            if (PropertyEnabled(clippingBorder))
+            {
+                materialEditor.ShaderProperty(clippingBorderWidth, Styles.clippingBorderWidth, 2);
+                materialEditor.ShaderProperty(clippingBorderColor, Styles.clippingBorderColor, 2);
+                GUILayout.Box(string.Format(Styles.propertiesComponentHelp, nameof(ClippingPrimitive), "other clipping"), EditorStyles.helpBox, Array.Empty<GUILayoutOption>());
+            }
         }
 
         protected void FluentOptions(MaterialEditor materialEditor, Material material)

@@ -17,11 +17,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using BIMservercenter.Toolkit.Internal.Gltf.AsyncAwaitUtil;
-using System.IO;
-using System.IO.Compression;
-using System.Threading.Tasks;
-using UnityEngine;
+using BIMservercenter.Toolkit.Public.Utilities;
 using UnityEngine.Networking;
+using System.Threading.Tasks;
+using System.IO.Compression;
+using System.Threading;
+using UnityEngine;
+using System.IO;
 
 namespace BIMservercenter.Toolkit.Internal.Utilities
 {
@@ -59,21 +61,44 @@ namespace BIMservercenter.Toolkit.Internal.Utilities
 
         // ---------------------------------------------------------------------------
 
-        public static async Task<bool> DownloadAsync(string url, string path)
+        public static async Task DownloadAsync(
+                        string url,
+                        string path,
+                        FuncProgressPercUpdate funcProgressPercUpdate,
+                        CancellationTokenSource cancellationTokenSource)
         {
             UnityWebRequest unityWebRequest;
+            UnityWebRequestAsyncOperation asyncOperation;
 
             unityWebRequest = new UnityWebRequest(url, UnityWebRequest.kHttpVerbGET);
             unityWebRequest.downloadHandler = new DownloadHandlerBuffer();
 
-            await unityWebRequest.SendWebRequest();
-            if (unityWebRequest.isHttpError == false && unityWebRequest.isNetworkError == false)
+            asyncOperation = unityWebRequest.SendWebRequest();
+
+            funcProgressPercUpdate?.Invoke(0f);
+
+            while (asyncOperation.isDone == false)
             {
-                await BIMServerCenterUtilities.WriteDataAsync(unityWebRequest.downloadHandler.data, path);
-                return true;
+                funcProgressPercUpdate?.Invoke(asyncOperation.progress);
+
+                if (cancellationTokenSource?.IsCancellationRequested == true)
+                {
+                    unityWebRequest.Abort();
+                    throw new BSExceptionCancellationRequested();
+                }
+
+                await Awaiters.NextFrame;
             }
 
-            return false;
+            funcProgressPercUpdate?.Invoke(1f);
+
+            if (unityWebRequest.isNetworkError == true)
+                throw new BSExceptionNetworkDownloadError();
+
+            if (unityWebRequest.isHttpError == true)
+                throw new BSExceptionServerDownloadError();
+
+            await WriteDataAsync(unityWebRequest.downloadHandler.data, path);
         }
 
         // ---------------------------------------------------------------------------
@@ -128,40 +153,25 @@ namespace BIMservercenter.Toolkit.Internal.Utilities
 
         // ---------------------------------------------------------------------------
 
-        private static async Task<MemoryStream> DecompressDataAsync(byte[] data)
-        {
-            MemoryStream decompressedData;
-            decompressedData = new MemoryStream();
-
-            using (MemoryStream compressedData = new MemoryStream(data))
-            {
-                compressedData.Seek(2, SeekOrigin.Begin);
-
-                using (DeflateStream zOut = new DeflateStream(compressedData, CompressionMode.Decompress))
-                {
-                    await zOut.CopyToAsync(decompressedData);
-                }
-            }
-
-            return decompressedData;
-        }
-
-        // ---------------------------------------------------------------------------
-
         public static async Task WriteDataAsync(byte[] data, string path, bool isCompressed = true)
         {
-            MemoryStream decompressedData;
-
-            if (isCompressed == true)
-                decompressedData = await DecompressDataAsync(data);
-            else
-                decompressedData = new MemoryStream(data);
-
-            using (FileStream fileStream = new FileStream(path, FileMode.Create))
+            using (MemoryStream rawData = new MemoryStream(data))
             {
-                decompressedData.Seek(0, SeekOrigin.Begin);
-                await decompressedData.CopyToAsync(fileStream);
-                await fileStream.FlushAsync();
+                using (FileStream fileStream = new FileStream(path, FileMode.Create))
+                {
+                    if (isCompressed == true)
+                    {
+                        using (DeflateStream deflateStream = new DeflateStream(rawData, CompressionMode.Decompress))
+                        {
+                            deflateStream.BaseStream.Seek(2, SeekOrigin.Begin);
+                            await deflateStream.CopyToAsync(fileStream);
+                        }
+                    }
+                    else
+                    {
+                        await rawData.CopyToAsync(fileStream);
+                    }
+                }
             }
         }
 

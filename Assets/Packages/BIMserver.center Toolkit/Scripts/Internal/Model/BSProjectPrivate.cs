@@ -17,11 +17,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 using BIMservercenter.Toolkit.Internal.Utilities;
+using BIMservercenter.Toolkit.Public.Utilities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using UnityEngine.Events;
+using System.Threading;
 using UnityEngine;
 using System.IO;
+using System;
 
 namespace BIMservercenter.Toolkit.Public.Model
 {
@@ -171,7 +173,7 @@ namespace BIMservercenter.Toolkit.Public.Model
                 projectImagePath = ProjectImageLandscapePath(projectPath);
                 return await PLoadTextureImageCommonAsync(imgUrlLandscape, projectImagePath, defaultTexture);
             }
-            
+
             return await BIMServerCenterUtilities.DownloadTextureAsync(imgUrlLandscape, defaultTexture);
         }
 
@@ -179,29 +181,44 @@ namespace BIMservercenter.Toolkit.Public.Model
         // Gltf
         // ---------------------------------------------------------------------------
 
-        private async Task<List<BSGltf>> PLoadGltfsAsync(string rootPath, bool hide, UnityAction<int, int, float> progress = null)
+        private async Task<List<BSGltf>> PLoadGltfsAsync(
+                        string rootPath,
+                        bool generateColliders,
+                        bool hide,
+                        FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdate,
+                        CancellationTokenSource cancellationTokenSource)
         {
             List<BSGltf> gltfList;
 
             gltfList = new List<BSGltf>();
 
             {
+                int numDocuments;
                 string projectPath;
 
+                numDocuments = documents.Count;
                 projectPath = ProjectPath(rootPath);
 
-                for (int i = 0; i < documents.Count; i++)
+                funcProgressPercIndexesUpdate?.Invoke(0, numDocuments, 0f);
+
+                for (int i = 0; i < numDocuments; i++)
                 {
                     BSDocument bSDocument;
                     List<BSGltf> documentGltfObjectList;
+                    FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdateLocal;
 
                     bSDocument = documents[i];
 
-                    documentGltfObjectList = await bSDocument.LoadGltfsAsync(projectPath, hide);
-                    progress?.Invoke(i, documents.Count, (i / (float)documents.Count));
+                    funcProgressPercIndexesUpdateLocal = (actualIndex, total, percentage) =>
+                    {
+                        funcProgressPercIndexesUpdate?.Invoke(i, numDocuments, ((i + percentage) / numDocuments));
+                    };
 
+                    documentGltfObjectList = await bSDocument.LoadGltfsAsync(projectPath, generateColliders, hide, funcProgressPercIndexesUpdateLocal, cancellationTokenSource);
                     gltfList.AddRange(documentGltfObjectList);
                 }
+
+                funcProgressPercIndexesUpdate?.Invoke(numDocuments, numDocuments, 1f);
             }
 
             return gltfList;
@@ -243,17 +260,18 @@ namespace BIMservercenter.Toolkit.Public.Model
 
         // ---------------------------------------------------------------------------
 
-        private async Task<bool> PSaveOnDiskAsync(string rootPath, UnityAction<int, int, float> progress = null)
+        private async Task PSaveOnDiskAsync(
+                        string rootPath,
+                        FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdate,
+                        CancellationTokenSource cancellationTokenSource)
         {
             string projectPath;
-            string projectJsonPath;
             string projectImagePath;
             string projectImageSmallPath;
             string projectImageLargePath;
             string projectImageLandscapePath;
 
             projectPath = ProjectPath(rootPath);
-            projectJsonPath = ProjectJsonPath(projectPath);
             projectImagePath = ProjectImagePath(projectPath);
             projectImageSmallPath = ProjectImageSmallPath(projectPath);
             projectImageLargePath = ProjectImageLargePath(projectPath);
@@ -267,20 +285,29 @@ namespace BIMservercenter.Toolkit.Public.Model
 
             if (HasDocuments() == true)
             {
-                for (int i = 0; i < documents.Count; i++)
+                int numDocuments;
+
+                numDocuments = documents.Count;
+
+                funcProgressPercIndexesUpdate?.Invoke(0, numDocuments, 0f);
+
+                for (int i = 0; i < numDocuments; i++)
                 {
                     BSDocument bSDocument;
+                    FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdateLocal;
 
                     bSDocument = documents[i];
 
-                    if (await bSDocument.SaveOnDiskAsync(projectPath) == false)
-                        return false;
+                    funcProgressPercIndexesUpdateLocal = (actualIndex, total, percentage) =>
+                    {
+                        funcProgressPercIndexesUpdate?.Invoke(i, numDocuments, ((i + percentage) / numDocuments));
+                    };
 
-                    progress?.Invoke(i, documents.Count, (i / (float)documents.Count));
+                    await bSDocument.SaveOnDiskAsync(projectPath, funcProgressPercIndexesUpdateLocal, cancellationTokenSource);
                 }
-            }
 
-            BIMServerCenterUtilities.SaveJsonOnDisk(projectJsonPath, this);
+                funcProgressPercIndexesUpdate?.Invoke(numDocuments, numDocuments, 1f);
+            }
 
             {
                 Texture2D projectTexture;
@@ -314,8 +341,6 @@ namespace BIMservercenter.Toolkit.Public.Model
                     await BIMServerCenterUtilities.WriteDataAsync(projectTextureData, projectImageLandscapePath, false);
                 }
             }
-
-            return true;
         }
 
         // ---------------------------------------------------------------------------
@@ -378,6 +403,7 @@ namespace BIMservercenter.Toolkit.Public.Model
             if (Directory.Exists(srcProjectPath) == true)
             {
                 Directory.Move(srcProjectPath, destProjectPath);
+
                 return true;
             }
 

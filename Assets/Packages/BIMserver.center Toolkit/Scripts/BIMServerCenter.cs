@@ -52,6 +52,12 @@ namespace BIMservercenter.Toolkit
         public static string UserURLImage
         { get { return Instance.bsSession.urlImage; } }
 
+        /// <summary>
+        /// Call this property to get the user bimServerId logged.
+        /// </summary>
+        public static string UserBimServerId
+        { get { return Instance.bsSession.bimServerId; } }
+
         // ---------------------------------------------------------------------------
         // Disk
         // ---------------------------------------------------------------------------
@@ -94,11 +100,27 @@ namespace BIMservercenter.Toolkit
         { return await PLogoutAsync(bSLanguage); }
 
         /// <summary>
+        /// Call this method to register a BIMserver.center account.
+        /// </summary>
+        /// <param name="email">Input email of the account to register.</param>
+        /// <param name="password">Input password of the account to register.</param>
+        /// <param name="name">Input name of the account to register.</param>
+        /// <param name="countryCode">Input ISO 3166-1 alpha-2 code of the account to register.</param>
+        public static async Task<BSResponse> BSRegisterAsync(string email, string password, string name, string countryCode, BSLanguage bSLanguage = BSLanguage.English)
+        { return await PRegisterAsync(bSLanguage, email, password, name, countryCode); }
+
+        /// <summary>
+        /// Call this method to remember password of a BIMserver.center account.
+        /// </summary>
+        public static async Task<BSResponse> BSForgotPasswordAsync(string email, BSLanguage bSLanguage = BSLanguage.English)
+        { return await PForgotPasswordAsync(bSLanguage, email); }
+
+        /// <summary>
         /// Call this method to get all the projects from your BIMserver.center account.
         /// </summary>
         public static async Task<BSResponseList<BSProject>> GetBSProjectListAsync(BSLanguage bSLanguage = BSLanguage.English)
         { return await PGetBSProjectListAsync(bSLanguage); }
-        
+
         /// <summary>
         /// Call this method to get all the educational projects from your BIMserver.center account.
         /// </summary>
@@ -109,8 +131,8 @@ namespace BIMservercenter.Toolkit
         /// Call this method to get all the projects with 3D view from your BIMserver.center account.
         /// </summary>
         public static async Task<BSResponseList<BSProject>> GetBSProjectWith3DListAsync(BSLanguage bSLanguage = BSLanguage.English)
-        { return await PGetBSProjectWith3DListAsync(bSLanguage); }        
-        
+        { return await PGetBSProjectWith3DListAsync(bSLanguage); }
+
         /// <summary>
         /// Call this method to get all the educational projects with 3D view from your BIMserver.center account.
         /// </summary>

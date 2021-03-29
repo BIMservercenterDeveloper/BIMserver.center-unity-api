@@ -49,6 +49,7 @@ namespace BIMservercenter.Toolkit.Internal.API.Response.Schema
             url_file = null;
             img_file = null;
             numero_ficheros_asociados = null;
+            is_created_initial_program = null;
             list = null;
         }
 
@@ -63,6 +64,7 @@ namespace BIMservercenter.Toolkit.Internal.API.Response.Schema
         public string url_file { get; set; }
         public string img_file { get; set; }
         public string numero_ficheros_asociados { get; set; }
+        public string is_created_initial_program { get; set; }
         public List<BSAssociatedDocumentItem> list { get; set; }
     }
 

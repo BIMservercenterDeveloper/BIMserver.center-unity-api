@@ -16,11 +16,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using System;
+using BIMservercenter.Toolkit.Public.Utilities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 using UnityEngine;
-using UnityEngine.Events;
+using System;
 
 namespace BIMservercenter.Toolkit.Public.Model
 {
@@ -42,34 +43,92 @@ namespace BIMservercenter.Toolkit.Public.Model
         /// <summary>
         /// Call this method to load the project image into a Texture2D object.
         /// </summary>
+        /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
+        [Obsolete]
+        public async Task<Texture2D> LoadTextureImageAsync(Texture2D defaultTexture)
+        { return await PLoadTextureImageAsync(null, defaultTexture); }
+
+        /// <summary>
+        /// Call this method to load the project image into a Texture2D object.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        [Obsolete]
+        public async Task<Texture2D> LoadTextureImageAsync(string rootPath)
+        { return await PLoadTextureImageAsync(rootPath, null); }
+
+        /// <summary>
+        /// Call this method to load the project image into a Texture2D object.
+        /// </summary>
         /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
         /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
         [Obsolete]
-        public async Task<Texture2D> LoadTextureImageAsync(string rootPath = null, Texture2D defaultTexture = null)
+        public async Task<Texture2D> LoadTextureImageAsync(string rootPath, Texture2D defaultTexture)
         { return await PLoadTextureImageAsync(rootPath, defaultTexture); }
 
         /// <summary>
         /// Call this method to load the small project image into a Texture2D object.
         /// </summary>
         /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageSmallAsync(string rootPath)
+        { return await PLoadTextureImageSmallAsync(rootPath, null); }
+
+        /// <summary>
+        /// Call this method to load the small project image into a Texture2D object.
+        /// </summary>
         /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
-        public async Task<Texture2D> LoadTextureImageSmallAsync(string rootPath = null, Texture2D defaultTexture = null)
+        public async Task<Texture2D> LoadTextureImageSmallAsync(Texture2D defaultTexture)
+        { return await PLoadTextureImageSmallAsync(null, defaultTexture); }
+
+        /// <summary>
+        /// Call this method to load the small project image into a Texture2D object.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageSmallAsync(string rootPath, Texture2D defaultTexture)
         { return await PLoadTextureImageSmallAsync(rootPath, defaultTexture); }
 
         /// <summary>
         /// Call this method to load the large project image into a Texture2D object.
         /// </summary>
         /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageLargeAsync(string rootPath)
+        { return await PLoadTextureImageLargeAsync(rootPath, null); }
+
+        /// <summary>
+        /// Call this method to load the large project image into a Texture2D object.
+        /// </summary>
         /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
-        public async Task<Texture2D> LoadTextureImageLargeAsync(string rootPath = null, Texture2D defaultTexture = null)
+        public async Task<Texture2D> LoadTextureImageLargeAsync(Texture2D defaultTexture)
+        { return await PLoadTextureImageLargeAsync(null, defaultTexture); }
+
+        /// <summary>
+        /// Call this method to load the large project image into a Texture2D object.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageLargeAsync(string rootPath, Texture2D defaultTexture)
         { return await PLoadTextureImageLargeAsync(rootPath, defaultTexture); }
 
         /// <summary>
         /// Call this method to load landscape the project image into a Texture2D object.
         /// </summary>
         /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageLanscapeAsync(string rootPath)
+        { return await PLoadTextureImageLandscapeAsync(rootPath, null); }
+
+        /// <summary>
+        /// Call this method to load landscape the project image into a Texture2D object.
+        /// </summary>
         /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
-        public async Task<Texture2D> LoadTextureImageLanscapeAsync(string rootPath = null, Texture2D defaultTexture = null)
+        public async Task<Texture2D> LoadTextureImageLanscapeAsync(Texture2D defaultTexture)
+        { return await PLoadTextureImageLandscapeAsync(null, defaultTexture); }
+
+        /// <summary>
+        /// Call this method to load landscape the project image into a Texture2D object.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to find the project image file downloaded.</param>
+        /// <param name="defaultTexture">Input defaultTexture to return if the image cannot been downloaded.</param>
+        public async Task<Texture2D> LoadTextureImageLanscapeAsync(string rootPath, Texture2D defaultTexture)
         { return await PLoadTextureImageLandscapeAsync(rootPath, defaultTexture); }
 
         // ---------------------------------------------------------------------------
@@ -79,10 +138,35 @@ namespace BIMservercenter.Toolkit.Public.Model
         /// Call this method to load the project gLTF files to the openned unity scene.
         /// </summary>
         /// <param name="rootPath">Input rootPath directory to save the project files downloaded.</param>
-        /// <param name="hide">Input hide the gLTF object when is loaded.</param>
-        /// <param name="progress">Input pogress unityaction to notify the project loading progress.</param>
-        public async Task<List<BSGltf>> LoadGltfsAsync(string rootPath, bool hide, UnityAction<int, int, float> progress = null)
-        { return await PLoadGltfsAsync(rootPath, hide, progress); }
+        /// <param name="generateCollider">Input boolean to generate colliders during construction.</param>
+        /// <param name="hide">Input boolean to show or hide the glTFGameObject after load it.</param>
+        /// <exception cref="BSExceptionFailedToReadGLTF">Thrown when a GLTF file can't be parsed</exception>
+        public async Task<List<BSGltf>> LoadGltfsAsync(string rootPath, bool generateColliders, bool hide)
+        { return await PLoadGltfsAsync(rootPath, generateColliders, hide, null, null); }
+
+        /// <summary>
+        /// Call this method to load the project gLTF files to the openned unity scene.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to save the project files downloaded.</param>
+        /// <param name="generateCollider">Input boolean to generate colliders during construction.</param>
+        /// <param name="hide">Input boolean to show or hide the glTFGameObject after load it.</param>
+        /// <param name="funcProgressPercIndexesUpdate">Callback to notify the project loading progress.</param>
+        /// <exception cref="BSExceptionFailedToReadGLTF">Thrown when a GLTF file can't be parsed</exception>
+        public async Task<List<BSGltf>> LoadGltfsAsync(string rootPath, bool generateColliders, bool hide, FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdate)
+        { return await PLoadGltfsAsync(rootPath, generateColliders, hide, funcProgressPercIndexesUpdate, null); }
+
+        /// <summary>
+        /// Call this method to load the project gLTF files to the openned unity scene.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to save the project files downloaded.</param>
+        /// <param name="generateCollider">Input boolean to generate colliders during construction.</param>
+        /// <param name="hide">Input boolean to show or hide the glTFGameObject after load it.</param>
+        /// <param name="funcProgressPercIndexesUpdate">Callback to notify the project loading progress.</param>
+        /// <param name="cancellationTokenSource">Signals to a CancellationToken that it should be canceled.</param>
+        /// <exception cref="BSExceptionFailedToReadGLTF">Thrown when a GLTF file can't be parsed</exception>
+        /// <exception cref="BSExceptionCancellationRequested">Thrown when cancellation is requested</exception>
+        public async Task<List<BSGltf>> LoadGltfsAsync(string rootPath, bool generateColliders, bool hide, FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdate, CancellationTokenSource cancellationTokenSource)
+        { return await PLoadGltfsAsync(rootPath, generateColliders, hide, funcProgressPercIndexesUpdate, cancellationTokenSource); }
 
         // ---------------------------------------------------------------------------
         // Disk
@@ -98,14 +182,38 @@ namespace BIMservercenter.Toolkit.Public.Model
         /// Call this method to save the project on disk.
         /// </summary>
         /// <param name="rootPath">Input rootPath directory to save the project.</param>
-        /// <param name="progress">Input pogress unityaction to notify the project saving progress.</param>
-        public async Task<bool> SaveOnDiskAsync(string rootPath, UnityAction<int, int, float> progress = null)
-        { return await PSaveOnDiskAsync(rootPath, progress); }
+        /// <exception cref="BSExceptionServerDownloadError">Thrown when a connection can't be established to the server</exception>
+        /// <exception cref="BSExceptionNetworkDownloadError">Thrown when a local connection can't be established</exception>
+        public async Task SaveOnDiskAsync(string rootPath)
+        { await PSaveOnDiskAsync(rootPath, null, null); }
+
+        /// <summary>
+        /// Call this method to save the project on disk.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to save the project.</param>
+        /// <param name="funcProgressPercIndexesUpdate">Callback to notify the project loading progress.</param>
+        /// <exception cref="BSExceptionServerDownloadError">Thrown when a connection can't be established to the server</exception>
+        /// <exception cref="BSExceptionNetworkDownloadError">Thrown when a local connection can't be established</exception>
+        public async Task SaveOnDiskAsync(string rootPath, FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdate)
+        { await PSaveOnDiskAsync(rootPath, funcProgressPercIndexesUpdate, null); }
+
+        /// <summary>
+        /// Call this method to save the project on disk.
+        /// </summary>
+        /// <param name="rootPath">Input rootPath directory to save the project.</param>
+        /// <param name="funcProgressPercIndexesUpdate">Callback to notify the project loading progress.</param>
+        /// <param name="cancellationTokenSource">Signals to a CancellationToken that it should be canceled.</param>
+        /// <exception cref="BSExceptionServerDownloadError">Thrown when a connection can't be established to the server</exception>
+        /// <exception cref="BSExceptionNetworkDownloadError">Thrown when a local connection can't be established</exception>
+        /// <exception cref="BSExceptionCancellationRequested">Thrown when cancellation is requested</exception>
+        public async Task SaveOnDiskAsync(string rootPath, FuncProgressPercIndexesUpdate funcProgressPercIndexesUpdate, CancellationTokenSource cancellationTokenSource)
+        { await PSaveOnDiskAsync(rootPath, funcProgressPercIndexesUpdate, cancellationTokenSource); }
 
         /// <summary>
         /// Call this method to remove the project from disk.
         /// </summary>
         /// <param name="rootPath">Input rootPath directory where is the project.</param>
+        [System.Obsolete]
         public bool RemoveFromDisk(string rootPath)
         { return PRemoveFromDisk(rootPath); }
 
@@ -113,6 +221,7 @@ namespace BIMservercenter.Toolkit.Public.Model
         /// Call this method to load the project from disk.
         /// </summary>
         /// <param name="projectPath">Input projectPath directory where is the project.</param>
+        [System.Obsolete]
         public bool LoadFromDisk(string projectPath)
         { return PLoadFromDisk(projectPath); }
 
@@ -121,6 +230,7 @@ namespace BIMservercenter.Toolkit.Public.Model
         /// </summary>
         /// <param name="srcRootPath">Input srcRootPath directory where is the project.</param>
         /// <param name="destRootPath">Input destRootPath directory where is the new path project.</param>
+        [System.Obsolete]
         public bool MoveAtDisk(string srcRootPath, string destRootPath)
         { return PMoveAtDisk(srcRootPath, destRootPath); }
     }

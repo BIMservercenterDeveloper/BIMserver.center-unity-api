@@ -18,9 +18,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using BIMservercenter.Toolkit.Internal.Gltf.Schema.Extensions;
 using BIMservercenter.Toolkit.Public.Model;
-using System;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 namespace BIMservercenter.Toolkit.Internal.Gltf.Schema
 {

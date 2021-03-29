@@ -33,6 +33,7 @@ namespace BIMservercenter.Toolkit.Internal.API.Model
         public string url;
         public string img;
         public string numAssociatedDocumentsAvailable;
+        public string isCreatedInitialProgram;
 
         public List<BSMAssociatedDocument> associatedDocumentsVisiblesList;
     }

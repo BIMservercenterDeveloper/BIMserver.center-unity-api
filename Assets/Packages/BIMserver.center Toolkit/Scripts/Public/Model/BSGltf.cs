@@ -16,8 +16,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+using BIMservercenter.Toolkit.Public.Utilities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 using UnityEngine;
 
 namespace BIMservercenter.Toolkit.Public.Model
@@ -59,8 +61,34 @@ namespace BIMservercenter.Toolkit.Public.Model
         /// Call this method to load a glTF file stored at disk into your actual openned scene.
         /// </summary>
         /// <param name="glTFPath">Input glTFPath where is the glTF file.</param>
-        /// <param name="hide">Input hide to show or hide the glTFGameObject after load it.</param>
-        public async Task LoadGltfFromDiskAsync(string glTFPath, bool hide)
-        { await PLoadGltfFromDiskAsync(glTFPath, hide); }
+        /// <param name="generateCollider">Input boolean to generate colliders during construction.</param>
+        /// <param name="hide">Input boolean to show or hide the glTFGameObject after load it.</param>
+        /// <exception cref="BSExceptionFailedToReadGLTF">Thrown when a GLTF file can't be parsed</exception>
+        public async Task LoadGltfFromDiskAsync(string glTFPath, bool generateCollider, bool hide)
+        { await PLoadGltfFromDiskAsync(glTFPath, generateCollider, hide, null, null); }
+
+        /// <summary>
+        /// Call this method to load a glTF file stored at disk into your actual openned scene.
+        /// </summary>
+        /// <param name="glTFPath">Input glTFPath where is the glTF file.</param>
+        /// <param name="generateCollider">Input boolean to generate colliders during construction.</param>
+        /// <param name="hide">Input boolean to show or hide the glTFGameObject after load it.</param>
+        /// <param name="funcProgressPercUpdate">Callback to notify the project loading progress.</param>
+        /// <exception cref="BSExceptionFailedToReadGLTF">Thrown when a GLTF file can't be parsed</exception>
+        public async Task LoadGltfFromDiskAsync(string glTFPath, bool generateCollider, bool hide, FuncProgressPercUpdate funcProgressPercUpdate)
+        { await PLoadGltfFromDiskAsync(glTFPath, generateCollider, hide, funcProgressPercUpdate, null); }
+
+        /// <summary>
+        /// Call this method to load a glTF file stored at disk into your actual openned scene.
+        /// </summary>
+        /// <param name="glTFPath">Input glTFPath where is the glTF file.</param>
+        /// <param name="generateCollider">Input boolean to generate colliders during construction.</param>
+        /// <param name="hide">Input boolean to show or hide the glTFGameObject after load it.</param>
+        /// <param name="funcProgressPercUpdate">Callback to notify the project loading progress.</param>
+        /// <param name="cancellationTokenSource">Signals to a CancellationToken that it should be canceled.</param>
+        /// <exception cref="BSExceptionFailedToReadGLTF">Thrown when a GLTF file can't be parsed</exception>
+        /// <exception cref="BSExceptionCancellationRequested">Thrown when cancellation is requested</exception>
+        public async Task LoadGltfFromDiskAsync(string glTFPath, bool generateCollider, bool hide, FuncProgressPercUpdate funcProgressPercUpdate, CancellationTokenSource cancellationTokenSource)
+        { await PLoadGltfFromDiskAsync(glTFPath, generateCollider, hide, funcProgressPercUpdate, cancellationTokenSource); }
     }
 }

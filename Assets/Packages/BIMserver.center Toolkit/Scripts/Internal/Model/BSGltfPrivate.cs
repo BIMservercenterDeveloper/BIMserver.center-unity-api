@@ -16,34 +16,50 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using BIMservercenter.Toolkit.Internal.Gltf.Schema;
 using BIMservercenter.Toolkit.Internal.Gltf.Serialization;
+using BIMservercenter.Toolkit.Internal.Gltf.Schema;
 using BIMservercenter.Toolkit.Internal.Utilities;
+using BIMservercenter.Toolkit.Public.Utilities;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
+using System.Threading;
 using UnityEngine;
+using System.IO;
 
 namespace BIMservercenter.Toolkit.Public.Model
 {
     public partial class BSGltf
     {
         private GltfObject glTF;
-        private GameObject glTFGameObject { get { return glTF.GameObjectReference; } }
-        private List<Collider> glTFColliders { get { return glTF.RegisteredColliders; } }
-        private List<Renderer> glTFRenderers { get { return glTF.RegisteredRenderers; } }
-        private List<Animation> glTFAnimations { get { return glTF.RegisteredAnimations; } }
-        private List<BSGltfExtras> glTFExtras { get { return glTF.RegisteredExtras; } }
+        private GameObject glTFGameObject { get { return glTF?.GameObjectReference; } }
+        private List<Collider> glTFColliders { get { return glTF?.RegisteredColliders; } }
+        private List<Renderer> glTFRenderers { get { return glTF?.RegisteredRenderers; } }
+        private List<Animation> glTFAnimations { get { return glTF?.RegisteredAnimations; } }
+        private List<BSGltfExtras> glTFExtras { get { return glTF?.RegisteredExtras; } }
 
         // ---------------------------------------------------------------------------
         // Disk
         // ---------------------------------------------------------------------------
 
-        private async Task PLoadGltfFromDiskAsync(string glTFPath, bool hide)
+        private async Task PLoadGltfFromDiskAsync(
+                        string glTFPath,
+                        bool generateColliders,
+                        bool hide,
+                        FuncProgressPercUpdate funcProgressPercUpdate,
+                        CancellationTokenSource cancellationTokenSource)
         {
+            CancellationTokenSource currentTokenSource;
+
+            currentTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
+
             BIMServerCenterAssertion.AssertEquals(File.Exists(glTFPath), true);
-            this.glTF = await GltfUtility.ImportGltfObjectFromPathAsync(glTFPath);
-            this.glTF.GameObjectReference.SetActive(!hide);
+            this.glTF = await GltfUtility.ImportGltfObjectFromPathAsync(glTFPath, generateColliders, currentTokenSource.Token, funcProgressPercUpdate);
+
+            if (this.glTF != null && this.glTF.GameObjectReference != null)
+                this.glTF.GameObjectReference.SetActive(!hide);
+
+            if (cancellationTokenSource == null)
+                currentTokenSource.Dispose();
         }
     }
 }

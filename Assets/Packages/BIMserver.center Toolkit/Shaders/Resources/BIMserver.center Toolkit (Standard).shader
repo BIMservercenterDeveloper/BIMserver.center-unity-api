@@ -34,6 +34,12 @@ Shader "BIMserver.center Toolkit/Standard"
         [Toggle(_EMISSION)] _EnableEmission("Enable Emission", Float) = 0.0
         [HDR]_EmissiveColor("Emissive Color", Color) = (0.0, 0.0, 0.0, 1.0)
 
+        // Rendering options.
+        _BlendedClippingWidth("Blended Clipping With", Range(0.0, 10.0)) = 1.0
+        [Toggle(_CLIPPING_BORDER)] _ClippingBorder("Clipping Border", Float) = 0.0
+        _ClippingBorderWidth("Clipping Border Width", Range(0.0, 1.0)) = 0.025
+        _ClippingBorderColor("Clipping Border Color", Color) = (1.0, 0.2, 0.0, 1.0)
+
         // Fluent options.
         [Toggle(_HOVER_LIGHT)] _HoverLight("Hover Light", Float) = 1.0
         [Toggle(_HOVER_COLOR_OVERRIDE)] _EnableHoverColorOverride("Hover Color Override", Float) = 0.0
@@ -170,12 +176,16 @@ Shader "BIMserver.center Toolkit/Standard"
             #pragma multi_compile_instancing
             #pragma multi_compile _ LIGHTMAP_ON
             #pragma multi_compile _ _MULTI_HOVER_LIGHT
+            #pragma multi_compile _ _CLIPPING_PLANE
+            #pragma multi_compile _ _CLIPPING_SPHERE
+            #pragma multi_compile _ _CLIPPING_BOX
 
             #pragma shader_feature _ _ALPHATEST_ON _ALPHABLEND_ON
             #pragma shader_feature _DISABLE_ALBEDO_MAP
             #pragma shader_feature _ _METALLIC_TEXTURE_ALBEDO_CHANNEL_A _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
             #pragma shader_feature _NORMAL_MAP
             #pragma shader_feature _EMISSION
+            #pragma shader_feature _CLIPPING_BORDER
             #pragma shader_feature _HOVER_LIGHT
             #pragma shader_feature _HOVER_COLOR_OVERRIDE
             #pragma shader_feature _PROXIMITY_LIGHT
@@ -196,13 +206,19 @@ Shader "BIMserver.center Toolkit/Standard"
 
             #define _NORMAL
 
-#if defined(_NORMAL) || defined(_HOVER_LIGHT) || defined(_PROXIMITY_LIGHT)
+#if defined(_CLIPPING_PLANE) || defined(_CLIPPING_SPHERE) || defined(_CLIPPING_BOX)
+            #define _CLIPPING_PRIMITIVE
+#else
+            #undef _CLIPPING_PRIMITIVE
+#endif
+
+#if defined(_NORMAL) || defined(_CLIPPING_PRIMITIVE) || defined(_HOVER_LIGHT) || defined(_PROXIMITY_LIGHT)
             #define _WORLD_POSITION
 #else
             #undef _WORLD_POSITION
 #endif
 
-#if defined(_ALPHATEST_ON)
+#if defined(_ALPHATEST_ON) || defined(_CLIPPING_PRIMITIVE)
             #define _ALPHA_CLIP
 #else
             #undef _ALPHA_CLIP
@@ -312,6 +328,31 @@ Shader "BIMserver.center Toolkit/Standard"
             fixed4 _LightColor0;
 #endif
 
+#if defined(_CLIPPING_PLANE)
+            fixed _ClipPlaneSide;
+            float4 _ClipPlane;
+#endif
+
+#if defined(_CLIPPING_SPHERE)
+            fixed _ClipSphereSide;
+            float4 _ClipSphere;
+#endif
+
+#if defined(_CLIPPING_BOX)
+            fixed _ClipBoxSide;
+            float4 _ClipBoxSize;
+            float4x4 _ClipBoxInverseTransform;
+#endif
+
+#if defined(_CLIPPING_PRIMITIVE)
+            float _BlendedClippingWidth;
+#endif
+
+#if defined(_CLIPPING_BORDER)
+            fixed _ClippingBorderWidth;
+            fixed3 _ClippingBorderColor;
+#endif
+
 #if defined(_HOVER_LIGHT)
 #if defined(_MULTI_HOVER_LIGHT)
 #define HOVER_LIGHT_COUNT 3
@@ -376,6 +417,29 @@ Shader "BIMserver.center Toolkit/Standard"
             {
                 fixed3 color = lerp(centerColor.rgb, middleColor.rgb, smoothstep(centerColor.a, middleColor.a, t));
                 return lerp(color, outerColor, smoothstep(middleColor.a, outerColor.a, t));
+            }
+#endif
+
+#if defined(_CLIPPING_PLANE)
+            inline float PointVsPlane(float3 worldPosition, float4 plane)
+            {
+                float3 planePosition = plane.xyz * plane.w;
+                return dot(worldPosition - planePosition, plane.xyz);
+            }
+#endif
+
+#if defined(_CLIPPING_SPHERE)
+            inline float PointVsSphere(float3 worldPosition, float4 sphere)
+            {
+                return distance(worldPosition, sphere.xyz) - sphere.w;
+            }
+#endif
+
+#if defined(_CLIPPING_BOX)
+            inline float PointVsBox(float3 worldPosition, float3 boxSize, float4x4 boxInverseTransform)
+            {
+                float3 distance = abs(mul(boxInverseTransform, float4(worldPosition, 1.0))) - boxSize;
+                return length(max(distance, 0.0)) + min(max(distance.x, max(distance.y, distance.z)), 0.0);
             }
 #endif
 
@@ -466,6 +530,24 @@ Shader "BIMserver.center Toolkit/Standard"
                 albedo.a = 1.0;
 #endif 
 
+                // Primitive clipping.
+#if defined(_CLIPPING_PRIMITIVE)
+                float primitiveDistance = 1.0;
+#if defined(_CLIPPING_PLANE)
+                primitiveDistance = min(primitiveDistance, PointVsPlane(i.worldPosition.xyz, _ClipPlane) * _ClipPlaneSide);
+#endif
+#if defined(_CLIPPING_SPHERE)
+                primitiveDistance = min(primitiveDistance, PointVsSphere(i.worldPosition.xyz, _ClipSphere) * _ClipSphereSide);
+#endif
+#if defined(_CLIPPING_BOX)
+                primitiveDistance = min(primitiveDistance, PointVsBox(i.worldPosition.xyz, _ClipBoxSize.xyz, _ClipBoxInverseTransform) * _ClipBoxSide);
+#endif
+#if defined(_CLIPPING_BORDER)
+                fixed3 primitiveBorderColor = lerp(_ClippingBorderColor, fixed3(0.0, 0.0, 0.0), primitiveDistance / _ClippingBorderWidth);
+                albedo.rgb += primitiveBorderColor * IF((primitiveDistance < _ClippingBorderWidth), 1.0, 0.0);
+#endif
+#endif
+
 #if defined(_DISTANCE_TO_EDGE)
                 fixed2 distanceToEdge;
                 distanceToEdge.x = abs(i.uv.x - 0.5) * 2.0;
@@ -548,6 +630,9 @@ Shader "BIMserver.center Toolkit/Standard"
 #if !defined(_ALPHATEST_ON)
                 _Cutoff = 0.5;
 #endif
+#if defined(_CLIPPING_PRIMITIVE)
+                albedo *= (primitiveDistance > 0.0);
+#endif
                 clip(albedo.a - _Cutoff);
                 albedo.a = 1.0;
 #endif
@@ -599,6 +684,11 @@ Shader "BIMserver.center Toolkit/Standard"
                 // Hover and proximity lighting should occur after near plane fading.
 #if defined(_HOVER_LIGHT) || defined(_PROXIMITY_LIGHT)
                 output.rgb += fluentLightColor * _FluentLightIntensity * pointToLight;
+#endif
+
+                // Perform non-alpha clipped primitive clipping on the final output.
+#if defined(_CLIPPING_PRIMITIVE) && !defined(_ALPHA_CLIP)
+                output *= saturate(primitiveDistance * (1.0f / _BlendedClippingWidth));
 #endif
 
                 return output;

@@ -16,8 +16,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-using BIMservercenter.Toolkit.Internal.API.Request;
 using BIMservercenter.Toolkit.Internal.API.Response;
+using BIMservercenter.Toolkit.Internal.API.Request;
 using BIMservercenter.Toolkit.Internal.Utilities;
 using BIMservercenter.Toolkit.Public.Model;
 
@@ -130,6 +130,36 @@ namespace BIMservercenter.Toolkit.Internal.API.Session
 
             response = new BSLogoutResponse();
             command = BSLogoutRequest.LogoutRequest(bSLanguage, sessionId);
+
+            sessionCommand = new BSSessionCommand(command, response, this, sessionDelegate);
+            sessionCommand.Execute();
+        }
+
+        // ---------------------------------------------------------------------------
+
+        public void Register(BSLanguage bSLanguage, string email, string password, string name, string languageCode, string countryCode, BSSessionDelegate sessionDelegate)
+        {
+            BSIResponse response;
+            string command;
+            BSSessionCommand sessionCommand;
+
+            response = new BSRegisterResponse();
+            command = BSRegisterRequest.RegisterRequest(bSLanguage, email, password, name, languageCode, countryCode);
+
+            sessionCommand = new BSSessionCommand(command, response, this, sessionDelegate);
+            sessionCommand.Execute();
+        }
+
+        // ---------------------------------------------------------------------------
+
+        public void ForgotPassword(BSLanguage bSLanguage, string email, BSSessionDelegate sessionDelegate)
+        {
+            BSIResponse response;
+            string command;
+            BSSessionCommand sessionCommand;
+
+            response = new BSForgotPasswordResponse();
+            command = BSForgotPasswordRequest.ForgotPasswordRequest(bSLanguage, email);
 
             sessionCommand = new BSSessionCommand(command, response, this, sessionDelegate);
             sessionCommand.Execute();
